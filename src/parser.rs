@@ -4,7 +4,10 @@ use all_types::*;
 
 
 pub fn parse_cnf(path: &str) -> std::io::Result<CNF> {
-    let input = std::fs::File::open(path).unwrap();
+    let input = match std::fs::File::open(path){
+        Err(e) => panic!("Impossible to open file: {}", e),
+        Ok(f) => f
+    };
     let reader = std::io::BufReader::new(input);
     let mut var_num = None;
     let mut clause_num = None;

@@ -4,11 +4,24 @@ mod solver;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let input = match std::fs::File::open(&args[0]){
-        Err(e) => panic!("Impossible to open file: {}", e),
-        Ok(f) => f
-    };
-    parser::parse_cnf(&args[0]).unwrap();
+    let cnf = parser::parse_cnf(&args[0]).unwrap();
+    let mut solver = solver::Solver::new(cnf);
+    solver.solve(Some(std::time::Duration::from_secs(10)));
+    match solver.status {
+        None => {
+            eprintln!("Time duration exceeded")
+        },
+        Some(satisfiable) => {
+            if satisfiable {
+                println!("Satisfiable");
+                println!("{:?}", solver.models)
+            } else {
+                println!(
+                    "Unsatisfiable"
+                )
+            }
+        },
+    }
     return;
 }
 
@@ -87,7 +100,7 @@ mod tests {
             "sat" => true,
             "unsat" => false,
             _ => {
-                println!("Expected \"sat\" but got \"{which}\"");
+                println!("Expected \"sat\" or \"unsat\" but got \"{which}\"");
                 exit(1);
             }
             
@@ -101,7 +114,6 @@ mod tests {
             let path_str = entry.path().to_str().unwrap();
 
             if path_str.ends_with(".cnf") {
-                //parse cnf file
                 let cnf = parse_cnf(path_str).unwrap();
                 let mut solver = Solver::default();
                 cnf.clauses
@@ -109,36 +121,36 @@ mod tests {
                     .for_each(|clause| solver.add_clause(all_types::Clause { clause: clause }));
 
                 eprintln!("Solving... {}", path_str);
-                // Time limit is 10 sec
                 let status = solver.solve(Some(std::time::Duration::from_secs(10)));
                 assert!(solver.status == status);
-                //Time out
 
                 match status {
                     None => {
-                        eprintln!("Skip!!(TIME LIMIT EXCEEDED): {}", path_str);
+                        eprintln!("Too much time for this one: {}", path_str);
                         continue;
                     },
-                    Some(expected) => {
-                        if !sat_model_check(&cnf.clauses, &solver.models) {
+                    Some(satisfiable) => {
+                        if satisfiable == expected {
+                            if !sat_model_check(&cnf.clauses, &solver.models) {
+                                eprintln!(
+                                    "Failed in my code T_T cnf: {}, Result: {:?} Expected: {:?}",
+                                    path_str, status, expected
+                                );
+                                assert!(false);
+                            }
+                        } else {
                             eprintln!(
-                                "Assignments are wrong!! cnf: {}, Result: {:?} Expected: {:?}",
+                                "Mismatch cnf: {}, Result: {:?} Expected: {:?}",
                                 path_str, status, expected
                             );
                             assert!(false);
                         }
                     },
-                    _ => {
-                        eprintln!(
-                            "cnf: {}, Result: {:?} Expected: {:?}",
-                            path_str, status, expected
-                        );
-                        assert!(false);
-                    },
                 }
             }
         }
     }
+
     #[test]
     fn test_solve() {
         test_all_files("sat");
