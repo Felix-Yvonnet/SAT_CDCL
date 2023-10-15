@@ -62,81 +62,93 @@ impl<T> IndexMut<Var> for Vec<T> {
     }
 }
 
+pub type Clause = Vec<Lit>;
 
-#[derive(Clone, Copy, Default, Debug)]
-pub struct Clause<'a> {
-    pub clause: &'a [Lit],
+#[derive(Debug, Default, Clone)]
+
+pub struct AllClauses {
+    pub clauses: Vec<Clause>,
 }
+
+impl AllClauses {
+    pub fn push(&mut self, clause: Clause) {
+        self.clauses.push(clause);
+    }
+}
+
 
 #[derive(Debug)]
 pub struct CNF {
-    pub var_num: Option<usize>,
-    pub clause_num: Option<usize>,
+    pub var_num: usize,
     pub clauses: Vec<Vec<Lit>>,
 }
 
-#[derive(Debug, Default)]
-pub struct Trail {
-    stack: Vec<Lit>,
-    stack_limit: Vec<usize>,
-    head: usize,
+
+impl CNF {
+    pub fn iter(&mut self) -> impl Iterator<Item=&Vec<Lit>> {
+        self.clauses.iter()
+    }
 }
-impl Trail {
-    fn new() -> Trail {
-        Trail {
-            stack: Vec::new(),
-            stack_limit: Vec::new(),
-            head: 0,
+
+
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub enum BoolValue {
+    True = 0,
+    False = 1,
+    Undefined = 2,
+}
+impl From<i8> for BoolValue {
+    #[inline]
+    fn from(x: i8) -> Self {
+        match x {
+            0 => BoolValue::True,
+            1 => BoolValue::False,
+            _ => BoolValue::Undefined,
         }
     }
-    fn new_descion_level(&mut self) {
-        self.stack_limit.push(self.stack.len());
-    }
-    #[inline]
-    pub fn decision_level(&self) -> usize {
-        self.stack_limit.len()
-    }
-    #[inline]
-    fn head(&self) -> Lit {
-        self.stack[self.head]
-    }
-    #[inline]
-    fn advance(&mut self) {
-        self.head += 1;
-    }
-    fn push(&mut self, x: Lit) {
-        self.stack.push(x);
-    }
 }
-
 
 #[derive(Debug, Default)]
-pub struct AssignData {
-     pub assigns: Vec<Option<bool>>,
-     pub decision_level: Vec<usize>,
-     pub trail: Trail,
+pub struct WorkingModel {
+    // The working assignment of the model
+    assigns: Vec<BoolValue>,
+    // The decision level of each var
+    decision_level: Vec<usize>,
 }
 
-impl AssignData {
-    fn new(n: usize) -> AssignData {
-        AssignData {
-            assigns: vec![None; n],
+
+impl WorkingModel {
+    pub fn new(n: usize) -> WorkingModel {
+        WorkingModel {
+            assigns: vec![BoolValue::Undefined; n],
             decision_level: vec![0; n],
-            trail: Trail::new(),
         }
     }
-    pub fn assign(&mut self, var: Var, lb: bool, level: usize) {
-        self.assigns[var] = Some(lb);
+    pub fn assign(&mut self, var: Var, value: BoolValue, level: usize) {
+        self.assigns[var] = value;
         self.decision_level[var] = level;
     }
-
-    pub fn enqueue(&mut self, lit: Lit) {
-        self.assign(
-            lit.var(),
-            lit.is_neg(),
-            self.trail.decision_level(),
-        );
-        self.trail.push(lit);
+    #[inline]
+    pub fn level(&self, v: Var) -> usize {
+        self.decision_level[v]
     }
-    
+    #[inline]
+    pub fn eval(&self, lit: Lit) -> BoolValue {
+        BoolValue::from(self.assigns[lit.var()] as i8 ^ lit.is_neg() as i8)
+    }
+    pub fn all_assigned(&self) -> bool {
+        !self.assigns.iter().any(|&eval| eval == BoolValue::Undefined)
+    }
+    pub fn next_unassigned(&self) -> Var {
+        let ind = self.assigns.iter().position(|&eval| eval == BoolValue::Undefined).unwrap();
+        Var::from_id(ind)
+    }
+    pub fn backtracking(&mut self, level: usize) {
+        for ind in 0..self.assigns.len() {
+            if self.decision_level[ind] >= level {
+                self.decision_level[ind] = 0;
+                self.assigns[ind] = BoolValue::Undefined;
+            }
+        }
+    }
 }

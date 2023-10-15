@@ -118,10 +118,11 @@ mod tests {
                 let mut solver = Solver::default();
                 cnf.clauses
                     .iter()
-                    .for_each(|clause| solver.add_clause(all_types::Clause { clause: clause }));
+                    .for_each(|clause | solver.add_clause(clause.clone()));
 
                 eprintln!("Solving... {}", path_str);
-                let status = solver.solve(Some(std::time::Duration::from_secs(10)));
+                solver.solve(Some(std::time::Duration::from_secs(10)));
+                let status = solver.status;
                 assert!(solver.status == status);
 
                 match status {
@@ -130,6 +131,7 @@ mod tests {
                         continue;
                     },
                     Some(satisfiable) => {
+                        // let model = Some(self.models.iter().map(|&opt| opt.unwrap()).collect())
                         if satisfiable == expected {
                             if !sat_model_check(&cnf.clauses, &solver.models) {
                                 eprintln!(

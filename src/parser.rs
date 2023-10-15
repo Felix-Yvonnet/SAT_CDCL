@@ -9,8 +9,7 @@ pub fn parse_cnf(path: &str) -> std::io::Result<CNF> {
         Ok(f) => f
     };
     let reader = std::io::BufReader::new(input);
-    let mut var_num = None;
-    let mut clause_num = None;
+    let mut var_num = 0;
     let mut clauses = vec![];
     for line in reader.lines() {
         let line = line?;
@@ -27,11 +26,9 @@ pub fn parse_cnf(path: &str) -> std::io::Result<CNF> {
         }
         if values[0] == "p" {
             if let Some(v) = values.get(2) {
-                var_num = Some(v.parse::<usize>().unwrap());
+                // Get the number of variables
+                var_num = v.parse::<usize>().unwrap();
             };
-            if let Some(v) = values.get(3) {
-                clause_num = Some(v.parse::<usize>().unwrap());
-            }
             continue;
         }
 
@@ -50,7 +47,6 @@ pub fn parse_cnf(path: &str) -> std::io::Result<CNF> {
     }
     Ok(CNF {
         var_num,
-        clause_num,
         clauses,
     })
 }
