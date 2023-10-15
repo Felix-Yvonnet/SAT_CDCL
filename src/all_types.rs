@@ -113,7 +113,7 @@ pub struct WorkingModel {
     // The working assignment of the model
     assigns: Vec<BoolValue>,
     // The decision level of each var
-    decision_level: Vec<usize>,
+    decision_level: Vec<(usize, usize)>,
 }
 
 
@@ -121,15 +121,19 @@ impl WorkingModel {
     pub fn new(n: usize) -> WorkingModel {
         WorkingModel {
             assigns: vec![BoolValue::Undefined; n],
-            decision_level: vec![0; n],
+            decision_level: vec![(0,0); n],
         }
     }
-    pub fn assign(&mut self, var: Var, value: BoolValue, level: usize) {
+    pub fn assign(&mut self, var: Var, value: BoolValue, level: usize, number: usize) {
         self.assigns[var] = value;
-        self.decision_level[var] = level;
+        self.decision_level[var] = (level, number);
     }
     #[inline]
     pub fn level(&self, v: Var) -> usize {
+        self.decision_level[v].0
+    }
+    #[inline]
+    pub fn precise_level(&self, v: Var) -> (usize, usize) {
         self.decision_level[v]
     }
     #[inline]
@@ -143,10 +147,13 @@ impl WorkingModel {
         let ind = self.assigns.iter().position(|&eval| eval == BoolValue::Undefined).unwrap();
         Var::from_id(ind)
     }
+    pub fn get_assigned(&self) -> Vec<BoolValue> {
+        self.assigns.clone()
+    }
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
-            if self.decision_level[ind] >= level {
-                self.decision_level[ind] = 0;
+            if self.decision_level[ind].0 >= level {
+                self.decision_level[ind] = (0,0);
                 self.assigns[ind] = BoolValue::Undefined;
             }
         }

@@ -1,6 +1,4 @@
-use std::{time::{Duration, Instant}, f32::consts::E};
-
-use all_types::WorkingModel;
+use std::time::{Duration, Instant};
 
 
 #[derive(Debug, Default)]
@@ -13,7 +11,7 @@ pub struct Solver {
     // The 2 watched litterals (optimize later)
     watched: Vec<Vec<usize>>,
     // The final assignments that do satisfy the problem
-    pub models: Vec<Option<bool>>,
+    pub models: Vec<all_types::BoolValue>,
     // Wether it is sat or not
     pub status: Option<bool>,
     level: usize,
@@ -33,7 +31,7 @@ impl Solver {
         };
         clauses.iter().for_each(|clause| {
             if clause.len() == 1 {
-                solver.models[clause[0].get_var()] = Some(true);
+                solver.working_model.assign(clause[0].get_var(), all_types::BoolValue::True, 0, 0);
             } else {
                 solver.add_clause(clause.to_vec());
             }
@@ -50,6 +48,7 @@ impl Solver {
                 lit.get_var(), 
                 all_types::BoolValue::from(lit.is_pos() as i8), 
                 self.level,
+                0,
             )
         } else {
             self.clauses.push(clause);
@@ -57,7 +56,7 @@ impl Solver {
     }
 
     // Implement the CDCL algorithm
-    fn cdcl(&mut self, maxtime: Option<Duration>) -> Option<bool> {
+    fn cdcl(&mut self, maxtime: Option<Duration>) -> Duration {
         // Implement the main CDCL loop here
         // You'll need to track variables, propagate, make decisions, and backtrack
         // You can implement conflict analysis and clause learning here
@@ -68,26 +67,51 @@ impl Solver {
             while !self.working_model.all_assigned() {
                 if start.elapsed() > time {
                     self.status = None;
-                    return None;
+                    return start.elapsed();
                 }
                 let conflict_clause = self.propagate();
                 if let Some(conflict) = conflict_clause {
                     // We found a conflict
                     let (lvl, learnt) = self.analyze_conflict(conflict);
-                    if lvl <= 0 {
-                        return Some(false);
+                    if lvl < 0 {
+                        self.status = Some(false);
+                        return start.elapsed();
                     }
                     self.clauses.push(learnt);
-                    self.backtrack(lvl);
+                    self.backtrack(lvl as usize);
                 } else if self.working_model.all_assigned() {
-                    return Some(true);
+                    break;
                 } else {
                     self.level += 1;
                     self.decide();
                 }
                 
             }
-            None
+            self.models = self.working_model.get_assigned();
+            let mut is_sat = true;
+            for clause in self.clauses.clauses.iter() {
+                let mut is_verified = false;
+                for lit in clause.iter() {
+                    match self.working_model.eval(*lit) {
+                        all_types::BoolValue::False => {},
+                        all_types::BoolValue::True => {
+                            is_verified = true;
+                            break
+                        },
+                        all_types::BoolValue::Undefined => {
+                            self.status = Some(false);
+                            return start.elapsed();
+                        }
+                    }
+                }
+                if !is_verified {
+                    is_sat = false;
+                    break
+                }
+
+            }
+            self.status = Some(is_sat);
+            start.elapsed()
 
         } else {
             loop {
@@ -96,10 +120,11 @@ impl Solver {
         }
     }
 
-    pub fn solve(&mut self, maxtime: Option<Duration>) -> Option<bool> {
+    pub fn solve(&mut self, maxtime: Option<Duration>) -> Duration {
         if let Some(_) = self.status {
-            return self.status
+            return Duration::from_secs(0);
         }
+        println!("Solving...");
         self.cdcl(maxtime)
     }
 
@@ -110,7 +135,8 @@ impl Solver {
         self.working_model.assign(
             self.working_model.next_unassigned(), 
             all_types::BoolValue::True,
-             self.level
+             self.level,
+             0,
         )
     }
 
@@ -119,6 +145,7 @@ impl Solver {
         // Implement unit clause propagation and conflict detection
         // Return true if no conflicts are found, and false if a conflict is detected
         let mut something_was_done: bool = true;
+        let mut indice_number: usize = 1;
         while something_was_done {
             something_was_done = false;
             for clause in self.clauses.clauses.iter() {
@@ -150,8 +177,10 @@ impl Solver {
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         all_types::BoolValue::True,
-                        self.level
-                    )
+                        self.level,
+                        indice_number,
+                    );
+                    indice_number += 1;
                 }
             }
         }
@@ -159,9 +188,24 @@ impl Solver {
     }
 
     // Implement conflict resolution and clause learning
-    fn analyze_conflict(&mut self, conflict: all_types::Clause) -> (usize, all_types::Clause) {
+    fn analyze_conflict(&mut self, conflict: all_types::Clause) -> (i32, all_types::Clause) {
         // Implement conflict analysis and clause learning
-        unimplemented!()
+        let mut max = conflict[0].get_var();
+        // Find the last changed : it should be the one with problems
+        for lit in conflict.iter() {
+            if self.working_model.precise_level(lit.get_var()) > self.working_model.precise_level(max) {
+                max = lit.get_var()
+            }
+        }
+
+        // Just add the other without checking anything else
+        let mut new_clause = vec![];
+        for lit in conflict.iter() {
+            if lit.get_var() != max {
+                new_clause.push(!*lit)
+            }
+        }
+        (self.working_model.level(max) as i32 - 1, new_clause)
     }
 
     fn backtrack(&mut self, level: usize) {

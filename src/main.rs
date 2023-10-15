@@ -4,14 +4,15 @@ mod solver;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let cnf = parser::parse_cnf(&args[0]).unwrap();
+    let cnf = parser::parse_cnf(&args[1]).unwrap();
     let mut solver = solver::Solver::new(cnf);
-    solver.solve(Some(std::time::Duration::from_secs(10)));
+    let time_spent = solver.solve(Some(std::time::Duration::from_secs(10))).as_secs();
     match solver.status {
         None => {
             eprintln!("Time duration exceeded")
         },
         Some(satisfiable) => {
+            println!("Computed in {time_spent} seconds.");
             if satisfiable {
                 println!("Satisfiable");
                 println!("{:?}", solver.models)
@@ -36,18 +37,18 @@ mod tests {
     use super::all_types::*;
 
     use walkdir::WalkDir;
-    fn sat_model_check(clauses: &[Vec<all_types::Lit>], assigns: &[Option<bool>]) -> bool {
+    fn sat_model_check(clauses: &[Vec<all_types::Lit>], assigns: &[all_types::BoolValue]) -> bool {
         for clause in clauses.iter() {
             let mut satisfied = false;
             for lit in clause {
                 match assigns[lit.var().0 as usize] {
-                    Some(true) => {
+                    all_types::BoolValue::True => {
                         if lit.is_pos() {
                             satisfied = true;
                             break;
                         }
                     }
-                    Some(false) => {
+                    all_types::BoolValue::False => {
                         if lit.is_neg() {
                             satisfied = true;
                             break;

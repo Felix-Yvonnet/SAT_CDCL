@@ -8,6 +8,7 @@ pub fn parse_cnf(path: &str) -> std::io::Result<CNF> {
         Err(e) => panic!("Impossible to open file: {}", e),
         Ok(f) => f
     };
+    println!("Reading file: {}", path);
     let reader = std::io::BufReader::new(input);
     let mut var_num = 0;
     let mut clauses = vec![];
