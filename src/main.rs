@@ -1,12 +1,16 @@
 mod parser;
 mod all_types;
 mod solver;
+mod tautosolver;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let cnf = parser::parse_cnf(&args[1]).unwrap();
+    let mut slowsolver = tautosolver::TautoSolver::new(cnf.var_num, cnf.clauses.clone());
     let mut solver = solver::Solver::new(cnf);
-    let time_spent = solver.solve(Some(std::time::Duration::from_secs(10))).as_secs();
+    let time_spent = solver.solve(Some(std::time::Duration::from_secs(10))).as_millis();
+    let is_sat = slowsolver.solve();
+    println!("{}", if is_sat {"SAT"}  else {"UNSAT"});
     match solver.status {
         None => {
             eprintln!("Time duration exceeded")
@@ -34,14 +38,13 @@ mod tests {
 
     use super::parser::*;
     use super::solver::Solver;
-    use super::all_types::*;
 
     use walkdir::WalkDir;
     fn sat_model_check(clauses: &[Vec<all_types::Lit>], assigns: &[all_types::BoolValue]) -> bool {
         for clause in clauses.iter() {
             let mut satisfied = false;
             for lit in clause {
-                match assigns[lit.var().0 as usize] {
+                match assigns[lit.get_var().0 as usize] {
                     all_types::BoolValue::True => {
                         if lit.is_pos() {
                             satisfied = true;
@@ -63,39 +66,6 @@ mod tests {
         }
         true
     }
-
-    fn clauses_to_cnf(clauses: &[Vec<Lit>], output_file_name: &str) -> std::io::Result<()> {
-        use std::io::prelude::*;
-
-        let mut f = std::fs::File::create(output_file_name)?;
-        let mut var_num = 0;
-        clauses.iter().for_each(|clause| {
-            for c in clause.iter() {
-                var_num = std::cmp::max(var_num, c.var().0 + 1);
-            }
-        });
-        writeln!(f, "p cnf {} {}", var_num, clauses.len())?;
-        for clause in clauses.iter() {
-            let line = clause
-                .iter()
-                .enumerate()
-                .map(|(i, x)| {
-                    let v = if x.is_pos() {
-                        format!("{}", x.var().0 + 1)
-                    } else {
-                        format!("-{}", x.var().0 + 1)
-                    };
-                    if i == clause.len() - 1 {
-                        format!("{} 0", v)
-                    } else {
-                        format!("{} ", v)
-                    }
-                })
-                .collect::<String>();
-            writeln!(f, "{}", line)?;
-        }
-        Ok(())
-    }
     fn test_all_files(which: &str) {
         let expected = match which {
             "sat" => true,
@@ -106,7 +76,7 @@ mod tests {
             }
             
         }; 
-        let entries = WalkDir::new(format!("cnf/{}/", which));
+        let entries = WalkDir::new(format!("tests/{}/", which));
         for entry in entries
             .into_iter()
             .filter_map(|e| e.ok())
@@ -116,15 +86,11 @@ mod tests {
 
             if path_str.ends_with(".cnf") {
                 let cnf = parse_cnf(path_str).unwrap();
-                let mut solver = Solver::default();
-                cnf.clauses
-                    .iter()
-                    .for_each(|clause | solver.add_clause(clause.clone()));
-
+                let tmp_clauses = cnf.clauses.clone();
+                let mut solver = Solver::new(cnf);
                 eprintln!("Solving... {}", path_str);
                 solver.solve(Some(std::time::Duration::from_secs(10)));
                 let status = solver.status;
-                assert!(solver.status == status);
 
                 match status {
                     None => {
@@ -134,17 +100,17 @@ mod tests {
                     Some(satisfiable) => {
                         // let model = Some(self.models.iter().map(|&opt| opt.unwrap()).collect())
                         if satisfiable == expected {
-                            if !sat_model_check(&cnf.clauses, &solver.models) {
+                            if !sat_model_check(&tmp_clauses, &solver.models) {
                                 eprintln!(
                                     "Failed in my code T_T cnf: {}, Result: {:?} Expected: {:?}",
-                                    path_str, status, expected
+                                    path_str, satisfiable, expected
                                 );
                                 assert!(false);
                             }
                         } else {
                             eprintln!(
                                 "Mismatch cnf: {}, Result: {:?} Expected: {:?}",
-                                path_str, status, expected
+                                path_str, satisfiable, expected
                             );
                             assert!(false);
                         }

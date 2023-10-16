@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
@@ -14,10 +16,6 @@ impl Lit {
     #[inline]
     pub fn is_neg(&self) -> bool {
         self.0 & 1 != 0
-    }
-    #[inline]
-    pub fn var(self) -> Var {
-        Var(self.0 >> 1)
     }
 }
 impl From<i32> for Lit {
@@ -107,6 +105,17 @@ impl From<i8> for BoolValue {
         }
     }
 }
+impl std::ops::Not for BoolValue {
+    type Output = Self;
+    #[inline]
+    fn not(self) -> Self::Output {
+        match self {
+            Self::True => Self::False,
+            Self::False => Self::True,
+            Self::Undefined => Self::Undefined,
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct WorkingModel {
@@ -138,7 +147,7 @@ impl WorkingModel {
     }
     #[inline]
     pub fn eval(&self, lit: Lit) -> BoolValue {
-        BoolValue::from(self.assigns[lit.var()] as i8 ^ lit.is_neg() as i8)
+        BoolValue::from(self.assigns[lit.get_var()] as i8 ^ lit.is_neg() as i8)
     }
     pub fn all_assigned(&self) -> bool {
         !self.assigns.iter().any(|&eval| eval == BoolValue::Undefined)
@@ -152,9 +161,16 @@ impl WorkingModel {
     }
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
-            if self.decision_level[ind].0 >= level {
+            if self.decision_level[ind].0 > level {
                 self.decision_level[ind] = (0,0);
                 self.assigns[ind] = BoolValue::Undefined;
+            } else if self.decision_level[ind].0 == level {
+                if self.decision_level[ind].1 == 0 {
+                    self.assigns[ind] = !self.assigns[ind];
+                } else {
+                    self.decision_level[ind] = (0,0);
+                    self.assigns[ind] = BoolValue::Undefined;
+                }
             }
         }
     }
