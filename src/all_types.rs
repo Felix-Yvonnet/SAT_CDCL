@@ -90,11 +90,19 @@ impl CNF {
 
 
 #[derive(PartialEq, Debug, Copy, Clone)]
+#[repr(u8)]
 pub enum BoolValue {
     True = 0,
     False = 1,
     Undefined = 2,
 }
+impl BoolValue {
+    #[inline]
+    fn to_u8(&self) -> u8 {
+        *self as u8 ^ 1
+    }
+}
+
 impl From<i8> for BoolValue {
     #[inline]
     fn from(x: i8) -> Self {
@@ -134,6 +142,7 @@ impl WorkingModel {
         }
     }
     pub fn assign(&mut self, var: Var, value: BoolValue, level: usize, number: usize) {
+        println!("assigning {:?} to {:?}", var, value);
         self.assigns[var] = value;
         self.decision_level[var] = (level, number);
     }
@@ -166,6 +175,7 @@ impl WorkingModel {
                 self.assigns[ind] = BoolValue::Undefined;
             } else if self.decision_level[ind].0 == level {
                 if self.decision_level[ind].1 == 0 {
+                    println!("backtracking {:?} to {:?}...", Var::from_id(ind), !self.assigns[ind]);
                     self.assigns[ind] = !self.assigns[ind];
                 } else {
                     self.decision_level[ind] = (0,0);

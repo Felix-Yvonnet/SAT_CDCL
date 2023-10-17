@@ -9,14 +9,14 @@ fn main() {
     let mut slowsolver = tautosolver::TautoSolver::new(cnf.var_num, cnf.clauses.clone());
     let mut solver = solver::Solver::new(cnf);
     let time_spent = solver.solve(Some(std::time::Duration::from_secs(10))).as_millis();
-    let is_sat = slowsolver.solve();
-    println!("{}", if is_sat {"SAT"}  else {"UNSAT"});
+    let (is_sat, slow_solve_time) = slowsolver.solve();
+    println!("{} slowly in {} ms", if is_sat {"SAT"}  else {"UNSAT"}, slow_solve_time.as_millis());
     match solver.status {
         None => {
             eprintln!("Time duration exceeded")
         },
         Some(satisfiable) => {
-            println!("Computed in {time_spent} seconds.");
+            println!("Computed in {time_spent} ms.");
             if satisfiable {
                 println!("Satisfiable");
                 println!("{:?}", solver.models)

@@ -13,8 +13,10 @@ impl TautoSolver {
         }
     }
 
-    pub fn solve(&mut self) -> bool {
-        self.ssolve(0)
+    pub fn solve(&mut self) -> (bool, std::time::Duration) {        
+        let start = std::time::Instant::now();
+        (self.ssolve(0), start.elapsed())
+
     }
 
     fn eval(&self) -> bool {

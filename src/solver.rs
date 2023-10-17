@@ -31,7 +31,11 @@ impl Solver {
         };
         clauses.iter().for_each(|clause| {
             if clause.len() == 1 {
-                solver.working_model.assign(clause[0].get_var(), all_types::BoolValue::True, 0, 0);
+                solver.working_model.assign(
+                    clause[0].get_var(),
+                     all_types::BoolValue::True, 
+                     0, 
+                     0);
             } else {
                 solver.add_clause(clause.to_vec());
             }
@@ -45,8 +49,8 @@ impl Solver {
         } else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
-                lit.get_var(), 
-                all_types::BoolValue::from(lit.is_pos() as i8), 
+                lit.get_var(),
+                all_types::BoolValue::from(lit.is_neg() as i8), 
                 self.level,
                 0,
             )
@@ -61,7 +65,6 @@ impl Solver {
         // You'll need to track variables, propagate, make decisions, and backtrack
         // You can implement conflict analysis and clause learning here
         // Return true if a solution is found and false if the formula is unsatisfiable
-        
         if let Some(time) = maxtime {
             let start = Instant::now();
             while !self.working_model.all_assigned() {
@@ -70,12 +73,10 @@ impl Solver {
                     return start.elapsed();
                 }
                 let conflict_clause = self.propagate();
-                println!("assigns : {:?}", self.working_model.get_assigned());
                 if let Some(conflict) = conflict_clause {
                     // We found a conflict
                     let (lvl, learnt) = self.analyze_conflict(conflict);
-                    if lvl < 0 {
-                        println!("under 0");
+                    if lvl == 0 {
                         self.status = Some(false);
                         return start.elapsed();
                     }
@@ -84,10 +85,9 @@ impl Solver {
                 } else if self.working_model.all_assigned() {
                     break;
                 } else {
-                    self.decide();
                     self.level += 1;
+                    self.decide();
                 }
-                
             }
             self.models = self.working_model.get_assigned();
             let mut is_sat = true;
@@ -134,6 +134,7 @@ impl Solver {
     fn decide(&mut self) {
         // Implement variable decision heuristic (e.g., VSIDS, random, etc.)
         // Assign the chosen variable
+        println!("deciding {:?} to {:?} with dl {:?}", self.working_model.next_unassigned(), all_types::BoolValue::True, self.level);
         self.working_model.assign(
             self.working_model.next_unassigned(), 
             all_types::BoolValue::True,
@@ -174,16 +175,17 @@ impl Solver {
                     return Some(clause.clone());
                 }
                 if !multiple_seen && some_unset {
-                    let to_be_set_true: all_types::Lit = last_unknown.unwrap();                    
+                    indice_number += 1;
+                    let to_be_set_true = last_unknown.unwrap();                    
                     something_was_done = true;
-                    println!("lit: {}{:?}", if to_be_set_true.is_neg() {"-"} else {""}, to_be_set_true.get_var());
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         all_types::BoolValue::from(to_be_set_true.is_neg() as i8),
                         self.level,
                         indice_number,
                     );
-                    indice_number += 1;
+                    if self.level == 0 {
+                    }
                 }
             }
         }
@@ -193,12 +195,6 @@ impl Solver {
     // Implement conflict resolution and clause learning
     fn analyze_conflict(&mut self, conflict: all_types::Clause) -> (i32, all_types::Clause) {
 
-        
-        let mut toprint1 = vec![];
-        for lit in conflict.iter() {
-            toprint1.push(lit.get_var());
-        }
-        println!("conflict {:?}", toprint1);
         // Implement conflict analysis and clause learning
         let mut max = conflict[0].get_var();
         // Find the last changed : it should be the one with problems
@@ -207,8 +203,6 @@ impl Solver {
                 max = lit.get_var()
             }
         }
-        println!("problem at level {}", self.working_model.level(max));
-        println!("with term {:?}", max);
 
         // Just add the other without checking anything else
         let mut new_clause = vec![];
@@ -218,17 +212,11 @@ impl Solver {
             }
         }
 
-        let mut toprint = vec![];
-        for lit in new_clause.iter() {
-            toprint.push(lit.get_var());
-        }
-        println!("new_clause {:?}", toprint);
-
         (self.working_model.level(max) as i32 - 1, new_clause)
     }
 
     fn backtrack(&mut self, level: usize) {
-        self.working_model.backtracking(level);
         self.level = level;
+        self.working_model.backtracking(level);
     }
 }
