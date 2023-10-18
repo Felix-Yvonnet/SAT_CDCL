@@ -59,61 +59,57 @@ impl Solver {
         // You'll need to track variables, propagate, make decisions, and backtrack
         // You can implement conflict analysis and clause learning here
         // Return true if a solution is found and false if the formula is unsatisfiable
-        if let Some(time) = maxtime {
-            let start = Instant::now();
-            while !self.working_model.all_assigned() {
+        
+        let start = Instant::now();
+        while !self.working_model.all_assigned() {
+            if let Some(time) = maxtime {
                 if start.elapsed() > time {
                     self.status = None;
                     return start.elapsed();
                 }
-                let conflict_clause = self.propagate();
-                if let Some(conflict) = conflict_clause {
-                    // We found a conflict
-                    let (lvl, learnt) = self.analyze_conflict(conflict);
-                    if lvl == 0 {
+            }
+            let conflict_clause = self.propagate();
+            if let Some(conflict) = conflict_clause {
+                // We found a conflict
+                let (lvl, learnt) = self.analyze_conflict(conflict);
+                if lvl == 0 {
+                    self.status = Some(false);
+                    return start.elapsed();
+                }
+                self.add_clause(learnt);
+                self.backtrack(lvl as usize);
+            } else if self.working_model.all_assigned() {
+                break;
+            } else {
+                self.level += 1;
+                self.decide();
+            }
+        }
+        self.models = self.working_model.get_assigned();
+        let mut is_sat = true;
+        for clause in self.clauses.clauses.iter() {
+            let mut is_verified = false;
+            for lit in clause.iter() {
+                match self.working_model.eval(*lit) {
+                    BoolValue::False => {},
+                    BoolValue::True => {
+                        is_verified = true;
+                        break
+                    },
+                    BoolValue::Undefined => {
                         self.status = Some(false);
                         return start.elapsed();
                     }
-                    self.add_clause(learnt);
-                    self.backtrack(lvl as usize);
-                } else if self.working_model.all_assigned() {
-                    break;
-                } else {
-                    self.level += 1;
-                    self.decide();
                 }
             }
-            self.models = self.working_model.get_assigned();
-            let mut is_sat = true;
-            for clause in self.clauses.clauses.iter() {
-                let mut is_verified = false;
-                for lit in clause.iter() {
-                    match self.working_model.eval(*lit) {
-                        BoolValue::False => {},
-                        BoolValue::True => {
-                            is_verified = true;
-                            break
-                        },
-                        BoolValue::Undefined => {
-                            self.status = Some(false);
-                            return start.elapsed();
-                        }
-                    }
-                }
-                if !is_verified {
-                    is_sat = false;
-                    break
-                }
+            if !is_verified {
+                is_sat = false;
+                break
+            }
 
-            }
-            self.status = Some(is_sat);
-            start.elapsed()
-
-        } else {
-            loop {
-                unimplemented!();
-            }
         }
+        self.status = Some(is_sat);
+        start.elapsed()
     }
 
     pub fn solve(&mut self, maxtime: Option<Duration>) -> Duration {

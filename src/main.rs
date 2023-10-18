@@ -30,10 +30,6 @@ fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
 
         i+=1;
     }
-    if files.is_empty() {
-        eprintln!("Please provide at least one file to resolve");
-        std::process::exit(5)
-    }
     (flags, files)
 }
 
@@ -88,14 +84,14 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
 fn help() {
     println!("This function imlements different SAT solvers.");
     println!("To use it, you may write `sat_solver [args] file(s)`");
-    println!("Default is an optimization that choose which one to use.");
+    println!("Default is an optimization that determines which solver to use.");
     println!();
     println!("-h --help    Show this message");
     println!("--cdcl       Using the CDCL solver");
     println!("--khorn      Using the Khorn solver");
-    println!("--dummy      Use the dummy solver");
+    println!("--dummy      Using the dummy solver");
     println!("-v --verbose Print the model and different informations");
-    println!("-t --time    Limit the maximum time to spend searching");
+    println!("-t --time    Limit the maximum time (in seconds) to spend searching");
     println!("For example `./sat_solver --cdcl tests/sat/horn1.cnf tests/unsat/php6-4.cnf` will returns :");
     println!("SAT\nUNSAT");
 }
@@ -109,6 +105,10 @@ fn main() {
     if flags.contains(&"-h".to_owned()) || flags.contains(&"--help".to_owned()) {
         help();
         std::process::exit(0);
+    }    
+    if files.is_empty() {
+        eprintln!("Please provide at least one file to resolve");
+        std::process::exit(5)
     }
 
     let cnfs = get_cnfs(files);

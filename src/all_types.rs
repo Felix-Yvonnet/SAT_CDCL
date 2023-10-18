@@ -208,6 +208,7 @@ impl WorkingModel {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind].0 > level {
                 self.decision_level[ind] = (0,0);
+                self.assigns[ind] = BoolValue::Undefined;
             }
         }
     }
