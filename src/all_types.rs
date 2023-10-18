@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
@@ -22,7 +20,7 @@ impl From<i32> for Lit {
     #[inline]
     fn from(x: i32) -> Self {
         debug_assert!(x != 0);
-        let d = x.abs() as u32 - 1;
+        let d: u32 = x.abs() as u32 - 1;
         if x > 0 {
             Lit(d << 1)
         } else {
@@ -41,7 +39,7 @@ impl std::ops::Not for Lit {
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Var(pub u32);
 impl Var {
-    fn from_id(x: usize) -> Var {
+    pub fn from_id(x: usize) -> Var {
         Var(x as u32)
     }
 }
@@ -62,6 +60,52 @@ impl<T> IndexMut<Var> for Vec<T> {
 
 pub type Clause = Vec<Lit>;
 
+
+#[derive(Debug, Default, Clone)]
+pub struct CClause {
+    clause: Vec<Lit>,
+    pub pos: Option<Var>,
+    pub len: usize,
+    pub is_present: bool,
+}
+
+impl CClause {
+    pub fn new(clause: Vec<Lit>, pos: Option<Var>) -> Self {
+        let n = clause.len();
+        CClause { clause: clause, pos: pos, len: n, is_present: false }
+    }
+    pub fn iter(&self) -> impl Iterator<Item=&Lit> {
+        self.clause.iter()
+    }
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    pub fn get_first(&self) -> Lit {
+        self.clause[0]
+    }
+    pub fn get_at_pos(&self, pos: usize) -> Lit {
+        self.clause[pos]
+    }
+    pub fn decr_len(&mut self) {
+        self.len-=1
+    }
+}
+
+
+#[derive(Debug, Default, Clone)]
+
+pub struct CAllClauses {
+    pub clauses: Vec<CClause>,
+}
+impl CAllClauses {
+    pub fn new(clauses: Vec<CClause>) -> Self {
+        CAllClauses { clauses: clauses }
+    }
+    pub fn iter(&mut self) -> impl Iterator<Item=&mut CClause> {
+        self.clauses.iter_mut()
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 
 pub struct AllClauses {
@@ -75,7 +119,7 @@ impl AllClauses {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CNF {
     pub var_num: usize,
     pub clauses: Vec<Vec<Lit>>,
@@ -88,19 +132,12 @@ impl CNF {
     }
 }
 
-
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum BoolValue {
     True = 0,
     False = 1,
     Undefined = 2,
-}
-impl BoolValue {
-    #[inline]
-    fn to_u8(&self) -> u8 {
-        *self as u8 ^ 1
-    }
 }
 
 impl From<i8> for BoolValue {
@@ -142,7 +179,6 @@ impl WorkingModel {
         }
     }
     pub fn assign(&mut self, var: Var, value: BoolValue, level: usize, number: usize) {
-        println!("assigning {:?} to {:?}", var, value);
         self.assigns[var] = value;
         self.decision_level[var] = (level, number);
     }
@@ -172,15 +208,6 @@ impl WorkingModel {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind].0 > level {
                 self.decision_level[ind] = (0,0);
-                self.assigns[ind] = BoolValue::Undefined;
-            } else if self.decision_level[ind].0 == level {
-                if self.decision_level[ind].1 == 0 {
-                    println!("backtracking {:?} to {:?}...", Var::from_id(ind), !self.assigns[ind]);
-                    self.assigns[ind] = !self.assigns[ind];
-                } else {
-                    self.decision_level[ind] = (0,0);
-                    self.assigns[ind] = BoolValue::Undefined;
-                }
             }
         }
     }

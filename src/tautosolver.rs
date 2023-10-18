@@ -1,15 +1,17 @@
+use crate::*;
+
 pub struct TautoSolver {
     n: usize,
-    clauses: Vec<all_types::Clause>,
-    assigns: Vec<all_types::BoolValue>,
+    clauses: Vec<Clause>,
+    assigns: Vec<BoolValue>,
 }
 
 impl TautoSolver {
-    pub fn new(n: usize, clauses: Vec<all_types::Clause>) -> TautoSolver {
+    pub fn new(n: usize, clauses: Vec<Clause>) -> TautoSolver {
         TautoSolver { 
             n: n,
             clauses: clauses,
-            assigns: vec![all_types::BoolValue::Undefined; n],
+            assigns: vec![BoolValue::Undefined; n],
         }
     }
 
@@ -24,7 +26,7 @@ impl TautoSolver {
         for clause in self.clauses.iter() {
             let mut tmp_sat = false;
             for lit in clause {
-                if self.assigns[lit.get_var()] == all_types::BoolValue::True {
+                if self.assigns[lit.get_var()] == BoolValue::True {
                     tmp_sat = true;
                     break;
                 }
@@ -40,9 +42,9 @@ impl TautoSolver {
         if i == self.n {
             return self.eval()
         }
-        self.assigns[i] = all_types::BoolValue::True;
+        self.assigns[i] = BoolValue::True;
         if !self.ssolve(i+1) {
-            self.assigns[i] = all_types::BoolValue::False;
+            self.assigns[i] = BoolValue::False;
             return self.ssolve(i+1)
         }
         true

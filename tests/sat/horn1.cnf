@@ -1,0 +1,13 @@
+c to test Horn sat solver and compare the results with the basic solver
+p cnf 15 11
+1 -2 -3 -4 -5 -6 -7 -8 -9 -10
+2 -5 -8 -13 -14
+5 -1 -2
+15 -15
+7 -15 -14 -13 -12
+12 -14 -11
+7 -1 -2 -3 -4 -11
+2 -1
+12 -8
+11 -12
+10 -3 -5 -14 -15 -6 -9

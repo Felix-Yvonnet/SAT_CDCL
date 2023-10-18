@@ -1,31 +1,25 @@
 use std::time::{Duration, Instant};
-
+use crate::*;
 
 #[derive(Debug, Default)]
 pub struct Solver {
-    // The number of initial variables
-    n: usize,
     // The clauses (initial and added ones)
-    clauses: all_types::AllClauses,
-    working_model: all_types::WorkingModel,
-    // The 2 watched litterals (optimize later)
-    watched: Vec<Vec<usize>>,
+    clauses: AllClauses,
+    working_model: WorkingModel,
     // The final assignments that do satisfy the problem
-    pub models: Vec<all_types::BoolValue>,
+    pub models: Vec<BoolValue>,
     // Wether it is sat or not
     pub status: Option<bool>,
     level: usize,
 }
 
 impl Solver {
-    pub fn new(mut clauses: all_types::CNF) -> Solver {
+    pub fn new(mut clauses: CNF) -> Self {
         let n = clauses.var_num;
         let mut solver = Solver {
-            n,
-            clauses: all_types::AllClauses { clauses: clauses.clauses.clone() },
-            working_model: all_types::WorkingModel::new(n),
+            clauses: AllClauses { clauses: vec![] },
+            working_model: WorkingModel::new(n),
             models: vec![],
-            watched: vec![vec![]; 2 * n],
             status: None,
             level: 0,
         };
@@ -33,7 +27,7 @@ impl Solver {
             if clause.len() == 1 {
                 solver.working_model.assign(
                     clause[0].get_var(),
-                     all_types::BoolValue::True, 
+                     BoolValue::True, 
                      0, 
                      0);
             } else {
@@ -43,14 +37,14 @@ impl Solver {
         solver
     }
 
-    pub fn add_clause(&mut self, clause: all_types::Clause) {
+    pub fn add_clause(&mut self, clause: Clause) {
         if clause.is_empty() {
             self.status = Some(false);
         } else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
                 lit.get_var(),
-                all_types::BoolValue::from(lit.is_neg() as i8), 
+                BoolValue::from(lit.is_neg() as i8), 
                 self.level,
                 0,
             )
@@ -95,12 +89,12 @@ impl Solver {
                 let mut is_verified = false;
                 for lit in clause.iter() {
                     match self.working_model.eval(*lit) {
-                        all_types::BoolValue::False => {},
-                        all_types::BoolValue::True => {
+                        BoolValue::False => {},
+                        BoolValue::True => {
                             is_verified = true;
                             break
                         },
-                        all_types::BoolValue::Undefined => {
+                        BoolValue::Undefined => {
                             self.status = Some(false);
                             return start.elapsed();
                         }
@@ -123,7 +117,7 @@ impl Solver {
     }
 
     pub fn solve(&mut self, maxtime: Option<Duration>) -> Duration {
-        if let Some(_) = self.status {
+        if self.status.is_some() {
             return Duration::from_secs(0);
         }
         println!("Solving...");
@@ -134,17 +128,16 @@ impl Solver {
     fn decide(&mut self) {
         // Implement variable decision heuristic (e.g., VSIDS, random, etc.)
         // Assign the chosen variable
-        println!("deciding {:?} to {:?} with dl {:?}", self.working_model.next_unassigned(), all_types::BoolValue::True, self.level);
         self.working_model.assign(
             self.working_model.next_unassigned(), 
-            all_types::BoolValue::True,
+            BoolValue::True,
              self.level,
              0,
         )
     }
 
     // Implement clause propagation
-    fn propagate(&mut self) -> Option<all_types::Clause> {
+    fn propagate(&mut self) -> Option<Clause> {
         // Implement unit clause propagation and conflict detection
         // Return true if no conflicts are found, and false if a conflict is detected
         let mut something_was_done: bool = true;
@@ -152,13 +145,13 @@ impl Solver {
         while something_was_done {
             something_was_done = false;
             for clause in self.clauses.clauses.iter() {
-                let mut last_unknown: Option<all_types::Lit> = None;
+                let mut last_unknown: Option<Lit> = None;
                 let mut multiple_seen: bool = false;
                 let mut some_unset: bool = false;
                 let mut is_satisfied: bool = false;
                 for lit in clause.iter() {
                     match self.working_model.eval(*lit) {
-                        all_types::BoolValue::Undefined => {
+                        BoolValue::Undefined => {
                             some_unset = true;
                             if let Some(_) = last_unknown {
                                 multiple_seen = true;
@@ -167,7 +160,7 @@ impl Solver {
                                 last_unknown = Some(*lit);
                             }
                         },
-                        all_types::BoolValue::True => is_satisfied = true,
+                        BoolValue::True => is_satisfied = true,
                         _ => (),
                     }
                 }
@@ -180,7 +173,7 @@ impl Solver {
                     something_was_done = true;
                     self.working_model.assign(
                         to_be_set_true.get_var(),
-                        all_types::BoolValue::from(to_be_set_true.is_neg() as i8),
+                        BoolValue::from(to_be_set_true.is_neg() as i8),
                         self.level,
                         indice_number,
                     );
@@ -193,7 +186,7 @@ impl Solver {
     }
 
     // Implement conflict resolution and clause learning
-    fn analyze_conflict(&mut self, conflict: all_types::Clause) -> (i32, all_types::Clause) {
+    fn analyze_conflict(&mut self, conflict: Clause) -> (i32, Clause) {
 
         // Implement conflict analysis and clause learning
         let mut max = conflict[0].get_var();
