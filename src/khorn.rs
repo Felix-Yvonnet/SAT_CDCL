@@ -1,12 +1,14 @@
 use crate::all_types::*;
 
 pub struct KhornSolver {
+    n: usize,
     clauses: CAllClauses,
     assigned_pos: Vec<Var>,
 }
 
 impl KhornSolver {
     pub fn new(mut clauses: CNF) -> Self {
+        let n = clauses.var_num;
         let mut new_clauses = vec![];
         for clause in clauses.iter() {
             new_clauses.push(CClause::new(clause.to_vec(), {
@@ -18,7 +20,11 @@ impl KhornSolver {
                 }
             }));
         }
-        KhornSolver { clauses: CAllClauses::new(new_clauses), assigned_pos: vec![] }
+        KhornSolver { 
+            n,
+            clauses: CAllClauses::new(new_clauses), 
+            assigned_pos: vec![] 
+        }
     }
 
     pub fn solve(&mut self) -> (bool, std::time::Duration) {        
@@ -61,6 +67,15 @@ impl KhornSolver {
             }
         }
         current_min
+    }
+
+    pub fn assigns(&self) -> Vec<BoolValue> {
+        let mut assigns = vec![BoolValue::False; self.n];
+        for var in self.assigned_pos.iter() {
+            assigns[*var] = BoolValue::True;
+        }
+        assigns
+
     }
 }
 

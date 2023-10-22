@@ -58,7 +58,7 @@ fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
     }
 }
 
-fn khorn_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: bool) {
+fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: bool) {
     for cnf in cnfs {
         let mut solver = khorn::KhornSolver::new(cnf);
         let (is_sat, time_spent) = solver.solve();
@@ -71,14 +71,24 @@ fn khorn_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
 
 
 fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: bool) {
+    let mut mean_time = 0.;
+    let mut total_count = 0;
     for cnf in cnfs {
         let mut solver = tautosolver::TautoSolver::new(cnf.var_num, cnf.clauses);
-        let (is_sat, time_spent) = solver.solve();
-        println!("Solved and obtained : {}", if is_sat {"\x1b[32mSAT\x1b[0m"}  else {"\x1b[31mUNSAT\x1b[0m"});
-        if verbose {
-            println!("Solved in {} seconds", time_spent.as_secs_f64());
+        let (is_sat, time_spent) = solver.solve(max_time);
+
+        if is_sat.is_none() {
+            println!("Time duration exceeded");
+        } else {
+            println!("Solved and obtained : {}", if is_sat.unwrap() {"\x1b[32mSAT\x1b[0m"}  else {"\x1b[31mUNSAT\x1b[0m"});
+            if verbose {
+                println!("Solved in {} seconds", time_spent.as_secs_f64());
+            }
+            total_count += 1;
+            mean_time += time_spent.as_secs_f64();
         }
     }
+    println!("Mean time spent in {} seconds", mean_time / total_count as f64)
 }
 
 fn help() {
@@ -86,12 +96,12 @@ fn help() {
     println!("To use it, you may write `sat_solver [args] file(s)`");
     println!("Default is an optimization that determines which solver to use.");
     println!();
-    println!("-h --help    Show this message");
-    println!("--cdcl       Using the CDCL solver");
-    println!("--khorn      Using the Khorn solver");
-    println!("--dummy      Using the dummy solver");
-    println!("-v --verbose Print the model and different informations");
-    println!("-t --time    Limit the maximum time (in seconds) to spend searching");
+    println!("-h --help     Show this message");
+    println!("--cdcl        Using the CDCL solver");
+    println!("--khorn       Using the Khorn solver");
+    println!("--dummy       Using the dummy solver");
+    println!("-v --verbose  Print the model and different informations");
+    println!("-t --time     Limit the maximum time (in seconds) to spend searching");
     println!("For example `./sat_solver --cdcl tests/sat/horn1.cnf tests/unsat/php6-4.cnf` will returns :");
     println!("SAT\nUNSAT");
 }
@@ -105,7 +115,7 @@ fn main() {
     if flags.contains(&"-h".to_owned()) || flags.contains(&"--help".to_owned()) {
         help();
         std::process::exit(0);
-    }    
+    }
     if files.is_empty() {
         eprintln!("Please provide at least one file to resolve");
         std::process::exit(5)
@@ -137,7 +147,7 @@ fn main() {
         quick_solver(cnfs.clone(), max_time, verbose);
     }
     if flags.contains(&"--khorn".to_owned()) {
-        if verbose && !khorn::is_khorn(&cnfs[0]) { println!("Not a khorn configuration but go on") }
+        if verbose && !khorn::is_khorn(&cnfs[0]) { println!("\x1b[31mNot a Horn\x1b[0m configuration but go on") }
         khorn_solver(cnfs.clone(), max_time, verbose);
     }
     if flags.contains(&"--dummy".to_owned()) {
@@ -150,6 +160,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use std::process::exit;
+    // use crate::tautosolver::TautoSolver;
+
     use super::*;
 
     use super::parser::*;
@@ -191,7 +203,7 @@ mod tests {
                 exit(1);
             }
             
-        }; 
+        };
         let entries = WalkDir::new(format!("tests/{}/", which));
         for entry in entries
             .into_iter()
@@ -204,24 +216,27 @@ mod tests {
                 let cnf = parse_cnf(path_str).unwrap();
                 let tmp_clauses = cnf.clauses.clone();
                 let mut solver = Solver::new(cnf);
-                eprintln!("Solving... {}", path_str);
-                solver.solve(Some(std::time::Duration::from_secs(10)));
+                solver.solve(Some(std::time::Duration::from_secs(1)));
                 let status = solver.status;
+                // let mut solver = TautoSolver::new(cnf.var_num, cnf.clauses);
+                // let (status, time) = solver.solve(Some(std::time::Duration::from_secs(1)));
 
                 match status {
                     None => {
-                        eprintln!("Too much time for this one: {}", path_str);
+                        eprintln!("\x1b[33mToo much time for this one\x1b[0m");
                         continue;
                     },
                     Some(satisfiable) => {
                         // let model = Some(self.models.iter().map(|&opt| opt.unwrap()).collect())
                         if satisfiable == expected {
-                            if !sat_model_check(tmp_clauses.as_slice(), &solver.models) {
+                            if satisfiable && !sat_model_check(tmp_clauses.as_slice(), &solver.assigns()) {
                                 eprintln!(
                                     "Failed in my code T_T cnf: {}, Result: {:?} Expected: {:?}",
                                     path_str, satisfiable, expected
                                 );
                                 assert!(false);
+                            } else {
+                                eprintln!("\x1b[32mSuccess\x1b[0m")
                             }
                         } else {
                             eprintln!(

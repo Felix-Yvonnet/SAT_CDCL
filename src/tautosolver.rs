@@ -3,7 +3,7 @@ use crate::*;
 pub struct TautoSolver {
     n: usize,
     clauses: Vec<Clause>,
-    assigns: Vec<BoolValue>,
+    pub assigns: Vec<BoolValue>,
 }
 
 impl TautoSolver {
@@ -15,38 +15,63 @@ impl TautoSolver {
         }
     }
 
-    pub fn solve(&mut self) -> (bool, std::time::Duration) {        
+    pub fn assigns(&self) -> Vec<BoolValue> {
+        self.assigns.clone()
+    }
+
+    pub fn solve(&mut self, max_time: Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {        
         let start = std::time::Instant::now();
-        (self.ssolve(0), start.elapsed())
+        println!("Solving...");
+        (self.ssolve(0, start, max_time), start.elapsed())
 
     }
 
     fn eval(&self) -> bool {
-        let mut is_sat = true;
         for clause in self.clauses.iter() {
-            let mut tmp_sat = false;
+            let mut satisfied = false;
             for lit in clause {
-                if self.assigns[lit.get_var()] == BoolValue::True {
-                    tmp_sat = true;
-                    break;
-                }
+                match self.assigns[lit.get_var()] {
+                    BoolValue::True => {
+                        if lit.is_pos() {
+                            satisfied = true;
+                            break;
+                        }
+                    }
+                    BoolValue::False => {
+                        if lit.is_neg() {
+                            satisfied = true;
+                            break;
+                        }
+                    }
+                    _ => {}
+                };
             }
-            if !tmp_sat {
-                is_sat = false;
+            if !satisfied {
+                return false;
             }
-        }
-        is_sat
-    }
-
-    fn ssolve(&mut self, i: usize) -> bool {
-        if i == self.n {
-            return self.eval()
-        }
-        self.assigns[i] = BoolValue::True;
-        if !self.ssolve(i+1) {
-            self.assigns[i] = BoolValue::False;
-            return self.ssolve(i+1)
         }
         true
+    }
+
+    fn ssolve(&mut self, i: usize, start: std::time::Instant, max_time: Option<std::time::Duration>) -> Option<bool> {
+        if i == self.n {
+            return Some(self.eval());
+        }
+        self.assigns[i] = BoolValue::True;
+        let result = self.ssolve(i+1, start, max_time); 
+        
+        if result.is_none() {
+            return None
+        }
+        if let Some(time) = max_time {
+            if start.elapsed() > time {
+                return None;
+            }
+        }
+        if !result.unwrap() {
+            self.assigns[i] = BoolValue::False;
+            return self.ssolve(i+1, start, max_time);
+        }
+        Some(true)
     }
 }

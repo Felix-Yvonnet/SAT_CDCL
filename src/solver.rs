@@ -6,8 +6,6 @@ pub struct Solver {
     // The clauses (initial and added ones)
     clauses: AllClauses,
     working_model: WorkingModel,
-    // The final assignments that do satisfy the problem
-    pub models: Vec<BoolValue>,
     // Wether it is sat or not
     pub status: Option<bool>,
     level: usize,
@@ -19,20 +17,11 @@ impl Solver {
         let mut solver = Solver {
             clauses: AllClauses { clauses: vec![] },
             working_model: WorkingModel::new(n),
-            models: vec![],
             status: None,
             level: 0,
         };
         clauses.iter().for_each(|clause| {
-            if clause.len() == 1 {
-                solver.working_model.assign(
-                    clause[0].get_var(),
-                     BoolValue::True, 
-                     0, 
-                     0);
-            } else {
-                solver.add_clause(clause.to_vec());
-            }
+            solver.add_clause(clause.to_vec());
         });
         solver
     }
@@ -61,7 +50,7 @@ impl Solver {
         // Return true if a solution is found and false if the formula is unsatisfiable
         
         let start = Instant::now();
-        while !self.working_model.all_assigned() {
+        while !self.working_model.all_good(&self.clauses) {
             if let Some(time) = maxtime {
                 if start.elapsed() > time {
                     self.status = None;
@@ -72,43 +61,20 @@ impl Solver {
             if let Some(conflict) = conflict_clause {
                 // We found a conflict
                 let (lvl, learnt) = self.analyze_conflict(conflict);
-                if lvl == 0 {
+                if lvl < 0 {
                     self.status = Some(false);
                     return start.elapsed();
                 }
                 self.add_clause(learnt);
                 self.backtrack(lvl as usize);
-            } else if self.working_model.all_assigned() {
+            } else if self.working_model.all_good(&self.clauses) {
                 break;
             } else {
                 self.level += 1;
                 self.decide();
             }
         }
-        self.models = self.working_model.get_assigned();
-        let mut is_sat = true;
-        for clause in self.clauses.clauses.iter() {
-            let mut is_verified = false;
-            for lit in clause.iter() {
-                match self.working_model.eval(*lit) {
-                    BoolValue::False => {},
-                    BoolValue::True => {
-                        is_verified = true;
-                        break
-                    },
-                    BoolValue::Undefined => {
-                        self.status = Some(false);
-                        return start.elapsed();
-                    }
-                }
-            }
-            if !is_verified {
-                is_sat = false;
-                break
-            }
-
-        }
-        self.status = Some(is_sat);
+        self.status = Some(true);
         start.elapsed()
     }
 
@@ -200,12 +166,15 @@ impl Solver {
                 new_clause.push(!*lit)
             }
         }
-
         (self.working_model.level(max) as i32 - 1, new_clause)
     }
 
     fn backtrack(&mut self, level: usize) {
         self.level = level;
         self.working_model.backtracking(level);
+    }
+
+    pub fn assigns(&self) -> Vec<BoolValue> {
+        self.working_model.get_assigned().clone()
     }
 }

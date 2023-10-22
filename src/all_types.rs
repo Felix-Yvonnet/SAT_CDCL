@@ -1,4 +1,5 @@
 use std::ops::{Index, IndexMut};
+use rand::prelude::IteratorRandom;
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Lit(u32);
@@ -194,15 +195,32 @@ impl WorkingModel {
     pub fn eval(&self, lit: Lit) -> BoolValue {
         BoolValue::from(self.assigns[lit.get_var()] as i8 ^ lit.is_neg() as i8)
     }
-    pub fn all_assigned(&self) -> bool {
-        !self.assigns.iter().any(|&eval| eval == BoolValue::Undefined)
+    pub fn all_good(&self, clauses: &AllClauses) -> bool {
+        for clause in clauses.clauses.iter() {
+            let mut is_verified = false;
+            for lit in clause.iter() {
+                match self.eval(*lit) {
+                    BoolValue::False => {},
+                    BoolValue::True => {
+                        is_verified = true;
+                        break
+                    },
+                    BoolValue::Undefined => {
+                        return false;
+                    }
+                }
+            }
+            if !is_verified {
+                return false;
+            }
+        }
+        true
     }
     pub fn next_unassigned(&self) -> Var {
-        let ind = self.assigns.iter().position(|&eval| eval == BoolValue::Undefined).unwrap();
-        Var::from_id(ind)
+        Var::from_id((0..self.assigns.len()).filter(|&var| self.assigns[var] == BoolValue::Undefined).choose(&mut rand::thread_rng()).unwrap())
     }
-    pub fn get_assigned(&self) -> Vec<BoolValue> {
-        self.assigns.clone()
+    pub fn get_assigned(&self) -> &Vec<BoolValue> {
+        &self.assigns
     }
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
