@@ -21,15 +21,15 @@ impl KhornSolver {
                 }
             }));
         }
-        KhornSolver { 
+        KhornSolver {
             num_var: clauses.var_num,
             num_clauses: clauses.cl_num,
-            clauses: CAllClauses::new(new_clauses), 
-            assigned_pos: vec![] 
+            clauses: CAllClauses::new(new_clauses),
+            assigned_pos: vec![],
         }
     }
 
-    pub fn solve(&mut self) -> (bool, std::time::Duration) {        
+    pub fn solve(&mut self) -> (bool, std::time::Duration) {
         let start = std::time::Instant::now();
         (self.linear_solve(), start.elapsed())
     }
@@ -40,12 +40,14 @@ impl KhornSolver {
             if shortest.len() == 0 {
                 return false;
             } else if shortest.len() > 1 {
-                return true
+                return true;
             } else {
                 let new_true = shortest.get_first();
                 self.assigned_pos.push(new_true.get_var());
                 for clause in self.clauses.iter() {
-                    let ind = clause.iter().position(|&lit| lit.get_var() == new_true.get_var());
+                    let ind = clause
+                        .iter()
+                        .position(|&lit| lit.get_var() == new_true.get_var());
                     if let Some(val) = ind {
                         if clause.get_at_pos(val).is_pos() {
                             clause.is_present = false;
@@ -55,7 +57,6 @@ impl KhornSolver {
                     }
                 }
             }
-
         }
     }
 
@@ -71,11 +72,10 @@ impl KhornSolver {
                     clauses_with_negvar[lit.get_var()].insert(k as u32);
                 }
             }
-
         }
         let max_score = *score.iter().max().unwrap();
-        let mut pool: Vec<HashSet<u32>> = vec![HashSet::new(); (max_score+1) as usize]; // score -> list[ind(clause)]
-        for k in 0.. self.num_clauses {
+        let mut pool: Vec<HashSet<u32>> = vec![HashSet::new(); (max_score + 1) as usize]; // score -> list[ind(clause)]
+        for k in 0..self.num_clauses {
             pool[score[k] as usize].insert(k as u32);
         }
 
@@ -90,7 +90,7 @@ impl KhornSolver {
             }
             let v = opt_v.unwrap();
             if solutions.contains(&v) || clauses_with_negvar[v].contains(&curr) {
-                continue
+                continue;
             }
             solutions.insert(v);
             for &c in clauses_with_negvar[v].iter() {
@@ -102,12 +102,13 @@ impl KhornSolver {
         true
     }
 
-
     fn get_shortest(&self) -> &CClause {
         let mut current_min = &self.clauses.clauses[0];
         for clause in self.clauses.clauses.iter() {
             if clause.is_present {
-                if clause.len() < current_min.len() || (clause.len() == current_min.len() && clause.pos.is_some()) {
+                if clause.len() < current_min.len()
+                    || (clause.len() == current_min.len() && clause.pos.is_some())
+                {
                     current_min = clause
                 }
             }
@@ -121,10 +122,8 @@ impl KhornSolver {
             assigns[*var] = BoolValue::True;
         }
         assigns
-
     }
 }
-
 
 pub fn is_khorn(cnf: &CNF) -> bool {
     for clause in cnf.clauses.iter() {
@@ -136,7 +135,6 @@ pub fn is_khorn(cnf: &CNF) -> bool {
                 } else {
                     seen_pos = true;
                 }
-
             }
         }
     }

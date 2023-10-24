@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 use rand::prelude::IteratorRandom;
+use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Lit(u32);
@@ -74,7 +74,6 @@ impl<T> IndexMut<Var> for Vec<T> {
 
 pub type Clause = Vec<Lit>;
 
-
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CClause {
     clause: Vec<Lit>,
@@ -86,9 +85,14 @@ pub struct CClause {
 impl CClause {
     pub fn new(clause: Vec<Lit>, pos: Option<Var>) -> Self {
         let n = clause.len();
-        CClause { clause: clause, pos: pos, len: n, is_present: false }
+        CClause {
+            clause: clause,
+            pos: pos,
+            len: n,
+            is_present: false,
+        }
     }
-    pub fn iter(&self) -> impl Iterator<Item=&Lit> {
+    pub fn iter(&self) -> impl Iterator<Item = &Lit> {
         self.clause.iter()
     }
     pub fn len(&self) -> usize {
@@ -101,10 +105,9 @@ impl CClause {
         self.clause[pos]
     }
     pub fn decr_len(&mut self) {
-        self.len-=1
+        self.len -= 1
     }
 }
-
 
 #[derive(Debug, Default, Clone)]
 
@@ -115,7 +118,7 @@ impl CAllClauses {
     pub fn new(clauses: Vec<CClause>) -> Self {
         CAllClauses { clauses: clauses }
     }
-    pub fn iter(&mut self) -> impl Iterator<Item=&mut CClause> {
+    pub fn iter(&mut self) -> impl Iterator<Item = &mut CClause> {
         self.clauses.iter_mut()
     }
 }
@@ -132,7 +135,6 @@ impl AllClauses {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct CNF {
     pub var_num: usize,
@@ -140,9 +142,8 @@ pub struct CNF {
     pub clauses: Vec<Vec<Lit>>,
 }
 
-
 impl CNF {
-    pub fn iter(&mut self) -> impl Iterator<Item=&Vec<Lit>> {
+    pub fn iter(&mut self) -> impl Iterator<Item = &Vec<Lit>> {
         self.clauses.iter()
     }
 }
@@ -178,19 +179,25 @@ impl std::ops::Not for BoolValue {
 }
 
 #[derive(Debug, Default)]
+pub struct ImplGraph(Vec<Vec<Lit>>);
+// If p in impl_graph[q] then p goes to negornotneg q in the implication graph
+
+#[derive(Debug, Default)]
 pub struct WorkingModel {
     // The working assignment of the model
     assigns: Vec<BoolValue>,
     // The decision level of each var
     decision_level: Vec<(usize, usize)>,
+    // The implication graph
+    impl_graph: ImplGraph,
 }
-
 
 impl WorkingModel {
     pub fn new(n: usize) -> WorkingModel {
         WorkingModel {
             assigns: vec![BoolValue::Undefined; n],
-            decision_level: vec![(0,0); n],
+            decision_level: vec![(0, 0); n],
+            impl_graph: ImplGraph(vec![Vec::new(); n]),
         }
     }
     pub fn assign(&mut self, var: Var, value: BoolValue, level: usize, number: usize) {
@@ -209,19 +216,106 @@ impl WorkingModel {
     pub fn eval(&self, lit: Lit) -> BoolValue {
         BoolValue::from(self.assigns[lit.get_var()] as i8 ^ lit.is_neg() as i8)
     }
+
+    pub fn impl_is_empty(&self, var: Var) -> bool {
+        self.impl_graph.0[var].is_empty()
+    }
+    pub fn add_implications(&mut self, var: Var, clause: Clause) {
+        for lit in clause.iter() {
+            if lit.get_var() != var {
+                self.impl_graph.0[var].push(!*lit)
+            }
+        }
+    }
+    pub fn find_conflict(&self, conflict: &Clause) -> Clause {
+        // backtracking the implication graph to find the sources of the conflict
+        // creates the conflict clause
+        let mut stack = Vec::new();
+        let mut conflicting = Vec::new();
+        for lit in conflict {
+            stack.push(*lit)
+        }
+        while !stack.is_empty() {
+            let lit = stack.pop().unwrap();
+            if self.impl_graph.0[lit.get_var()].is_empty() {
+                conflicting.push(lit)
+            } else {
+                for lit_dep in &self.impl_graph.0[lit.get_var()] {
+                    stack.push(*lit_dep)
+                }
+            }
+        }
+        return conflicting;
+    }
+
+    // evaluate the state of each clause
+    pub fn state_clause(&self, clause: &Clause) -> BoolValue {
+        let mut state_clause = BoolValue::False;
+        for lit in clause {
+            match self.eval(*lit) {
+                BoolValue::True => {
+                    state_clause = BoolValue::True;
+                    break;
+                }
+                BoolValue::Undefined => {
+                    state_clause = BoolValue::Undefined;
+                }
+                _ => {}
+            }
+        }
+        return state_clause;
+    }
+
+    // evaluate the state of the formula
+    pub fn state_formula(&self, formula: &AllClauses) -> BoolValue {
+        for clause in &formula.clauses {
+            if self.state_clause(clause) != BoolValue::True {
+                return self.state_clause(clause);
+            }
+        }
+        return BoolValue::True;
+    }
+
+    // find conflict when state of the formula is false
+    pub fn conflicting(&self, formula: &AllClauses) -> Option<Clause> {
+        for clause in &formula.clauses {
+            if self.state_clause(clause) == BoolValue::False {
+                return Some(clause.clone());
+            }
+        }
+        return None;
+    }
+
+    // checks whether a clause is a unit clause
+    // ie all its literals are false except one which is undefined
+    pub fn is_unit_clause(&self, clause: &Clause) -> Option<Lit> {
+        let mut undefined_lit = None;
+        for lit in clause {
+            match self.eval(*lit) {
+                BoolValue::True => return None,
+                BoolValue::Undefined => {
+                    if undefined_lit.is_some() {
+                        return None;
+                    } else {
+                        undefined_lit = Some(*lit)
+                    }
+                }
+                _ => {}
+            }
+        }
+        return undefined_lit;
+    }
+
     pub fn all_good(&self, clauses: &AllClauses) -> bool {
         for clause in clauses.clauses.iter() {
             let mut is_verified = false;
             for lit in clause.iter() {
                 match self.eval(*lit) {
-                    BoolValue::False => {},
                     BoolValue::True => {
                         is_verified = true;
-                        break
-                    },
-                    BoolValue::Undefined => {
-                        return false;
+                        break;
                     }
+                    _ => {}
                 }
             }
             if !is_verified {
@@ -231,7 +325,12 @@ impl WorkingModel {
         true
     }
     pub fn next_unassigned(&self) -> Var {
-        Var::from_id((0..self.assigns.len()).filter(|&var| self.assigns[var] == BoolValue::Undefined).choose(&mut rand::thread_rng()).unwrap())
+        Var::from_id(
+            (0..self.assigns.len())
+                .filter(|&var| self.assigns[var] == BoolValue::Undefined)
+                .choose(&mut rand::thread_rng())
+                .unwrap(),
+        )
     }
     pub fn get_assigned(&self) -> &Vec<BoolValue> {
         &self.assigns
@@ -239,7 +338,7 @@ impl WorkingModel {
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind].0 > level {
-                self.decision_level[ind] = (0,0);
+                self.decision_level[ind] = (0, 0);
                 self.assigns[ind] = BoolValue::Undefined;
             }
         }

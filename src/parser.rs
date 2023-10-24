@@ -1,11 +1,9 @@
 use std::io::BufRead;
 
-
-
 pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
-    let input = match std::fs::File::open(path){
+    let input = match std::fs::File::open(path) {
         Err(e) => panic!("Impossible to open file: {}", e),
-        Ok(f) => f
+        Ok(f) => f,
     };
     println!("Reading file: {}", path);
     let reader = std::io::BufReader::new(input);
@@ -51,7 +49,10 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
             // empty clause
             continue;
         }
-        let clause: Vec<crate::all_types::Lit> = values.iter().map(|&x| crate::all_types::Lit::from(x)).collect();
+        let clause: Vec<crate::all_types::Lit> = values
+            .iter()
+            .map(|&x| crate::all_types::Lit::from(x))
+            .collect();
         clauses.push(clause);
     }
     debug_assert!(cl_num == clauses.len());

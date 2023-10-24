@@ -9,7 +9,8 @@ pub struct SAT2 {
 impl SAT2 {
     pub fn new(cnf: CNF) -> SAT2 {
         let mut impl_graph = DiGraph::new();
-        let mut all_lits: Vec<Option<petgraph::stable_graph::NodeIndex>> =  vec![None; 2 * cnf.var_num];
+        let mut all_lits: Vec<Option<petgraph::stable_graph::NodeIndex>> =
+            vec![None; 2 * cnf.var_num];
         for clause in cnf.clauses {
             let lit1 = clause[0];
             let lit2 = clause[1];
@@ -55,11 +56,11 @@ impl SAT2 {
     }
 }
 
-
-
 pub fn is_2sat(cnf: &CNF) -> bool {
     for clause in cnf.clauses.iter() {
-        if clause.len() > 2 { return false }
+        if clause.len() > 2 {
+            return false;
+        }
     }
     true
 }
