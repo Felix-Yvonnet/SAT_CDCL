@@ -5,6 +5,8 @@ use crate::*;
 pub struct Solver {
     // The clauses (initial and added ones)
     clauses: AllClauses,
+    // Assignments of vars and decision levels of the assignments
+    // and the implicatioon graph
     working_model: WorkingModel,
     // Wether it is sat or not
     pub status: Option<bool>,
@@ -28,8 +30,9 @@ impl Solver {
 
     pub fn add_clause(&mut self, clause: Clause) {
         if clause.is_empty() {
-            self.status = Some(false);
-        } else if clause.len() == 1 {
+            // self.status = Some(false);
+            panic!("when does this happen ?")
+        } /* else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
                 lit.get_var(),
@@ -37,41 +40,40 @@ impl Solver {
                 self.level,
                 0,
             )
-        } else {
+        } */ else {
             self.clauses.push(clause);
         }
     }
 
     // Implement the CDCL algorithm
     fn cdcl(&mut self, maxtime: Option<Duration>) -> Duration {
-        // Implement the main CDCL loop here
-        // You'll need to track variables, propagate, make decisions, and backtrack
-        // You can implement conflict analysis and clause learning here
-        // Return true if a solution is found and false if the formula is unsatisfiable
         
         let start = Instant::now();
-        while !self.working_model.all_good(&self.clauses) {
+        self.propagate();
+        
+        while self.working_model.state_formula(&self.clauses) != BoolValue::True {
+
             if let Some(time) = maxtime {
                 if start.elapsed() > time {
                     self.status = None;
                     return start.elapsed();
                 }
             }
-            let conflict_clause = self.propagate();
-            if let Some(conflict) = conflict_clause {
-                // We found a conflict
-                let (lvl, learnt) = self.analyze_conflict(conflict);
-                if lvl < 0 {
+            while self.working_model.state_formula(&self.clauses) == BoolValue::False {
+                if self.level == 0 {
                     self.status = Some(false);
                     return start.elapsed();
                 }
+                let (lvl, learnt) = self.analyze_conflict();
                 self.add_clause(learnt);
                 self.backtrack(lvl as usize);
-            } else if self.working_model.all_good(&self.clauses) {
-                break;
-            } else {
+
+                self.propagate();
+            }
+            if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
                 self.level += 1;
                 self.decide();
+                self.propagate();
             }
         }
         self.status = Some(true);
@@ -88,6 +90,7 @@ impl Solver {
 
     // Implement the decision phase of CDCL
     fn decide(&mut self) {
+        // TODO
         // Implement variable decision heuristic (e.g., VSIDS, random, etc.)
         // Assign the chosen variable
         self.working_model.assign(
@@ -99,74 +102,46 @@ impl Solver {
     }
 
     // Implement clause propagation
-    fn propagate(&mut self) -> Option<Clause> {
-        // Implement unit clause propagation and conflict detection
-        // Return true if no conflicts are found, and false if a conflict is detected
+    fn propagate(&mut self) {
         let mut something_was_done: bool = true;
-        let mut indice_number: usize = 1;
+        let mut index_number: usize = 1;
+
         while something_was_done {
             something_was_done = false;
+
             for clause in self.clauses.clauses.iter() {
-                let mut last_unknown: Option<Lit> = None;
-                let mut multiple_seen: bool = false;
-                let mut some_unset: bool = false;
-                let mut is_satisfied: bool = false;
-                for lit in clause.iter() {
-                    match self.working_model.eval(*lit) {
-                        BoolValue::Undefined => {
-                            some_unset = true;
-                            if let Some(_) = last_unknown {
-                                multiple_seen = true;
-                                break
-                            } else {
-                                last_unknown = Some(*lit);
-                            }
-                        },
-                        BoolValue::True => is_satisfied = true,
-                        _ => (),
-                    }
-                }
-                if !some_unset && !is_satisfied {
-                    return Some(clause.clone());
-                }
-                if !multiple_seen && some_unset {
-                    indice_number += 1;
-                    let to_be_set_true = last_unknown.unwrap();                    
+                if self.working_model.is_unit_clause(clause).is_some() {
                     something_was_done = true;
+                    index_number += 1;
+
+                    let to_be_set_true = self.working_model.is_unit_clause(clause).unwrap();
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
                         self.level,
-                        indice_number,
+                        index_number,
                     );
-                    if self.level == 0 {
-                    }
+                    
+                    self.working_model.add_implications(to_be_set_true.get_var(), clause.clone())
                 }
             }
         }
-        None
     }
 
     // Implement conflict resolution and clause learning
-    fn analyze_conflict(&mut self, conflict: Clause) -> (i32, Clause) {
+    fn analyze_conflict(&mut self) -> (i32, Clause) {
 
-        // Implement conflict analysis and clause learning
-        let mut max = conflict[0].get_var();
-        // Find the last changed : it should be the one with problems
-        for lit in conflict.iter() {
-            if self.working_model.precise_level(lit.get_var()) > self.working_model.precise_level(max) {
-                max = lit.get_var()
+        let conflict = self.working_model.conflicting(&self.clauses);
+        let conflict_clause = self.working_model.find_conflict(&conflict.unwrap());
+        // find decision level to backtrack to
+        // it is the maximum of all the decision levels in conflict clause - 1
+        let mut max = self.working_model.level(conflict_clause[0].get_var());
+        for lit in &conflict_clause {
+            if self.working_model.level(lit.get_var()) > max {
+                max = self.working_model.level(lit.get_var())
             }
         }
-
-        // Just add the other without checking anything else
-        let mut new_clause = vec![];
-        for lit in conflict.iter() {
-            if lit.get_var() != max {
-                new_clause.push(!*lit)
-            }
-        }
-        (self.working_model.level(max) as i32 - 1, new_clause)
+        return (max as i32 - 1, conflict_clause)
     }
 
     fn backtrack(&mut self, level: usize) {
