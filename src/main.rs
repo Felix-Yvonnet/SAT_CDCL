@@ -3,6 +3,8 @@ mod all_types;
 mod solver;
 mod tautosolver;
 mod khorn;
+mod sat2;
+
 use crate::all_types::*;
 
 fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
@@ -17,15 +19,15 @@ fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
                     eprintln!("Expected a time after the \"--time\" of \"-t\" argument");
                     std::process::exit(6);
                 } else if args[i].parse::<u8>().is_ok() {
-                    flags.push(args[i].to_owned());
+                    flags.push(args[i].to_string());
                 } else {
                     eprintln!("Expected a number after the \"--time\" of \"-t\" argument, got {}", args[i]);
                     std::process::exit(6);
                 }
             }
-            flags.push(args[i].to_owned());
+            flags.push(args[i].to_string());
         } else {
-            files.push(args[i].to_owned());
+            files.push(args[i].to_string());
         }
 
         i+=1;
@@ -60,6 +62,7 @@ fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
 
 fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: bool) {
     for cnf in cnfs {
+        println!("Solving...");
         let mut solver = khorn::KhornSolver::new(cnf);
         let (is_sat, time_spent) = solver.solve();
         println!("Solved and obtained : {}", if is_sat {"\x1b[32mSAT\x1b[0m"}  else {"\x1b[31mUNSAT\x1b[0m"});
@@ -74,7 +77,7 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
     let mut mean_time = 0.;
     let mut total_count = 0;
     for cnf in cnfs {
-        let mut solver = tautosolver::TautoSolver::new(cnf.var_num, cnf.clauses);
+        let mut solver = tautosolver::TautoSolver::new(cnf);
         let (is_sat, time_spent) = solver.solve(max_time);
 
         if is_sat.is_none() {
@@ -88,8 +91,28 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
             mean_time += time_spent.as_secs_f64();
         }
     }
-    println!("Mean time spent in {} seconds", mean_time / total_count as f64)
+    println!("Mean time spent: {:.1$} seconds", mean_time / total_count as f64, 6)
 }
+
+
+fn sat2_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: bool) {
+    for cnf in cnfs {       
+        let start = std::time::Instant::now();
+        let mut solver = sat2::SAT2::new(cnf.clone());
+        let is_sat = solver.solve();
+        let time_spent = start.elapsed();
+        println!("Solved in {} sec and obtained : {}", time_spent.as_secs_f64(),  if is_sat {"\x1b[32mSAT\x1b[0m"}  else {"\x1b[31mUNSAT\x1b[0m"});
+        if verbose {
+            println!("No time for this one yet");
+        }
+        let assigns = solver.assigns;
+        if is_sat && !sat_model_check(cnf.clauses.as_slice(), &assigns) {
+            println!("Fuck off!!!");
+        }
+    }
+
+}
+
 
 fn help() {
     println!("This function imlements different SAT solvers.");
@@ -112,7 +135,7 @@ fn main() {
 
     let (flags, files) = get_args(args);
 
-    if flags.contains(&"-h".to_owned()) || flags.contains(&"--help".to_owned()) {
+    if flags.contains(&"-h".to_string()) || flags.contains(&"--help".to_string()) {
         help();
         std::process::exit(0);
     }
@@ -131,31 +154,63 @@ fn main() {
         }
     };
 
-    let verbose = flags.contains(&"-v".to_owned()) || flags.contains(&"--verbose".to_owned());
+    let verbose = flags.contains(&"-v".to_string()) || flags.contains(&"--verbose".to_string());
     
     if !flags.iter().any(|f| f.starts_with('-') && !(f.starts_with("-v")) && !(f.starts_with("--v"))) {
         // No flags (other than the timer or verbose) are set
         for cnf in cnfs.clone() {
-            if khorn::is_khorn(&cnf) {
+            if sat2::is_2sat(&cnf) {
+                sat2_solver(vec![cnf], max_time, verbose);
+            } else if khorn::is_khorn(&cnf) {
                 khorn_solver(vec![cnf], max_time, verbose);
             } else {
                 quick_solver(vec![cnf], max_time, verbose)
             }
         }
     }
-    if flags.contains(&"--cdcl".to_owned()) {
+    if flags.contains(&"--cdcl".to_string()) {
         quick_solver(cnfs.clone(), max_time, verbose);
     }
-    if flags.contains(&"--khorn".to_owned()) {
+    if flags.contains(&"--khorn".to_string()) {
         if verbose && !khorn::is_khorn(&cnfs[0]) { println!("\x1b[31mNot a Horn\x1b[0m configuration but go on") }
         khorn_solver(cnfs.clone(), max_time, verbose);
     }
-    if flags.contains(&"--dummy".to_owned()) {
+    if flags.contains(&"--dummy".to_string()) {
         dummy_solver(cnfs.clone(), max_time, verbose);
+    }
+    if flags.contains(&"--2sat".to_string()) {
+        sat2_solver(cnfs.clone(), max_time, verbose);
     }
 }
 
 
+
+fn sat_model_check(clauses: &[Vec<Lit>], assigns: &[BoolValue]) -> bool {
+    for clause in clauses.iter() {
+        let mut satisfied = false;
+        for lit in clause {
+            match assigns[lit.get_var().0 as usize] {
+                BoolValue::True => {
+                    if lit.is_pos() {
+                        satisfied = true;
+                        break;
+                    }
+                }
+                BoolValue::False => {
+                    if lit.is_neg() {
+                        satisfied = true;
+                        break;
+                    }
+                }
+                _ => println!("Some undefined value")
+            };
+        }
+        if !satisfied {
+            return false;
+        }
+    }
+    true
+}
 
 #[cfg(test)]
 mod tests {
@@ -168,32 +223,7 @@ mod tests {
     use super::solver::Solver;
 
     use walkdir::WalkDir;
-    fn sat_model_check(clauses: &[Vec<Lit>], assigns: &[BoolValue]) -> bool {
-        for clause in clauses.iter() {
-            let mut satisfied = false;
-            for lit in clause {
-                match assigns[lit.get_var().0 as usize] {
-                    BoolValue::True => {
-                        if lit.is_pos() {
-                            satisfied = true;
-                            break;
-                        }
-                    }
-                    BoolValue::False => {
-                        if lit.is_neg() {
-                            satisfied = true;
-                            break;
-                        }
-                    }
-                    _ => {}
-                };
-            }
-            if !satisfied {
-                return false;
-            }
-        }
-        true
-    }
+    
     fn test_all_files(which: &str) {
         let expected = match which {
             "sat" => true,

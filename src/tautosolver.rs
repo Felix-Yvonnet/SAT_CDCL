@@ -7,11 +7,11 @@ pub struct TautoSolver {
 }
 
 impl TautoSolver {
-    pub fn new(n: usize, clauses: Vec<Clause>) -> TautoSolver {
+    pub fn new(cnf: CNF) -> TautoSolver {
         TautoSolver { 
-            n: n,
-            clauses: clauses,
-            assigns: vec![BoolValue::Undefined; n],
+            n: cnf.var_num,
+            clauses: cnf.clauses,
+            assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
 

@@ -36,6 +36,19 @@ impl std::ops::Not for Lit {
         Lit(self.0 ^ 1)
     }
 }
+impl<T> Index<Lit> for Vec<T> {
+    type Output = T;
+    #[inline]
+    fn index(&self, lit: Lit) -> &Self::Output {
+        &self[lit.0 as usize]
+    }
+}
+impl<T> IndexMut<Lit> for Vec<T> {
+    #[inline]
+    fn index_mut(&mut self, lit: Lit) -> &mut Self::Output {
+        &mut self[lit.0 as usize]
+    }
+}
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Var(pub u32);
@@ -62,7 +75,7 @@ impl<T> IndexMut<Var> for Vec<T> {
 pub type Clause = Vec<Lit>;
 
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CClause {
     clause: Vec<Lit>,
     pub pos: Option<Var>,
@@ -123,6 +136,7 @@ impl AllClauses {
 #[derive(Debug, Clone)]
 pub struct CNF {
     pub var_num: usize,
+    pub cl_num: usize,
     pub clauses: Vec<Vec<Lit>>,
 }
 
