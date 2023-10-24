@@ -141,7 +141,7 @@ impl Solver {
                 max = self.working_model.level(lit.get_var())
             }
         }
-        return (max as i32 - 1, conflict_clause);
+        (max as i32 - 1, conflict_clause)
     }
 
     fn backtrack(&mut self, level: usize) {

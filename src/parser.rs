@@ -2,10 +2,10 @@ use std::io::BufRead;
 
 pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
     let input = match std::fs::File::open(path) {
-        Err(e) => panic!("Impossible to open file: {}", e),
+        Err(e) => panic!("Impossible to open file: {e}"),
         Ok(f) => f,
     };
-    println!("Reading file: {}", path);
+    println!("Reading file: {path}");
     let reader = std::io::BufReader::new(input);
     let mut var_num = 0;
     let mut cl_num = 0;

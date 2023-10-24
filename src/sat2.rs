@@ -1,6 +1,6 @@
 use crate::all_types::*;
 use petgraph::graph::DiGraph;
-use std::collections::HashMap;
+
 pub struct SAT2 {
     impl_graph: DiGraph<Lit, ()>,
     pub assigns: Vec<BoolValue>,
@@ -32,7 +32,7 @@ impl SAT2 {
         }
 
         SAT2 {
-            impl_graph: impl_graph,
+            impl_graph,
             assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }

@@ -63,7 +63,7 @@ fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
                 }
             );
             if verbose {
-                println!("Solved in {} seconds", time_spent);
+                println!("Solved in {time_spent} seconds");
             }
         }
     }
@@ -177,13 +177,9 @@ fn main() {
     let cnfs = get_cnfs(files);
     let max_time = {
         let time = flags.iter().find(|&f| f.parse::<u64>().is_ok());
-        if time.is_none() {
-            None
-        } else {
-            Some(std::time::Duration::from_secs(
-                time.unwrap().parse::<u64>().ok().unwrap(),
-            ))
-        }
+        time.map(|t| std::time::Duration::from_secs(
+            t.parse::<u64>().ok().unwrap(),
+        ))
     };
 
     let verbose = flags.contains(&"-v".to_string()) || flags.contains(&"--verbose".to_string());
@@ -216,7 +212,7 @@ fn main() {
         dummy_solver(cnfs.clone(), max_time, verbose);
     }
     if flags.contains(&"--2sat".to_string()) {
-        sat2_solver(cnfs.clone(), max_time, verbose);
+        sat2_solver(cnfs, max_time, verbose);
     }
 }
 

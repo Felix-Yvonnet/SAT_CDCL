@@ -21,7 +21,7 @@ impl From<i32> for Lit {
     #[inline]
     fn from(x: i32) -> Self {
         debug_assert!(x != 0);
-        let d: u32 = x.abs() as u32 - 1;
+        let d: u32 = x.unsigned_abs() - 1;
         if x > 0 {
             Lit(d << 1)
         } else {
@@ -86,8 +86,8 @@ impl CClause {
     pub fn new(clause: Vec<Lit>, pos: Option<Var>) -> Self {
         let n = clause.len();
         CClause {
-            clause: clause,
-            pos: pos,
+            clause,
+            pos,
             len: n,
             is_present: false,
         }
@@ -97,6 +97,9 @@ impl CClause {
     }
     pub fn len(&self) -> usize {
         self.len
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
     pub fn get_first(&self) -> Lit {
         self.clause[0]
@@ -116,7 +119,7 @@ pub struct CAllClauses {
 }
 impl CAllClauses {
     pub fn new(clauses: Vec<CClause>) -> Self {
-        CAllClauses { clauses: clauses }
+        CAllClauses { clauses }
     }
     pub fn iter(&mut self) -> impl Iterator<Item = &mut CClause> {
         self.clauses.iter_mut()
@@ -235,8 +238,7 @@ impl WorkingModel {
         for lit in conflict {
             stack.push(*lit)
         }
-        while !stack.is_empty() {
-            let lit = stack.pop().unwrap();
+        while let Some(lit) = stack.pop() {
             if self.impl_graph.0[lit.get_var()].is_empty() {
                 conflicting.push(lit)
             } else {
@@ -245,7 +247,7 @@ impl WorkingModel {
                 }
             }
         }
-        return conflicting;
+        conflicting
     }
 
     // evaluate the state of each clause
@@ -263,7 +265,7 @@ impl WorkingModel {
                 _ => {}
             }
         }
-        return state_clause;
+        state_clause
     }
 
     // evaluate the state of the formula
@@ -273,7 +275,7 @@ impl WorkingModel {
                 return self.state_clause(clause);
             }
         }
-        return BoolValue::True;
+        BoolValue::True
     }
 
     // find conflict when state of the formula is false
@@ -283,7 +285,7 @@ impl WorkingModel {
                 return Some(clause.clone());
             }
         }
-        return None;
+        None
     }
 
     // checks whether a clause is a unit clause
@@ -303,19 +305,16 @@ impl WorkingModel {
                 _ => {}
             }
         }
-        return undefined_lit;
+        undefined_lit
     }
 
     pub fn all_good(&self, clauses: &AllClauses) -> bool {
         for clause in clauses.clauses.iter() {
             let mut is_verified = false;
             for lit in clause.iter() {
-                match self.eval(*lit) {
-                    BoolValue::True => {
-                        is_verified = true;
-                        break;
-                    }
-                    _ => {}
+                if self.eval(*lit) == BoolValue::True {
+                    is_verified = true;
+                    break;
                 }
             }
             if !is_verified {
