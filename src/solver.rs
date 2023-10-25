@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
 use crate::*;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Default)]
 pub struct Solver {
@@ -32,27 +32,27 @@ impl Solver {
         if clause.is_empty() {
             // self.status = Some(false);
             panic!("when does this happen ?")
-        } /* else if clause.len() == 1 {
+        }
+        /* else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
                 lit.get_var(),
-                BoolValue::from(lit.is_neg() as i8), 
+                BoolValue::from(lit.is_neg() as i8),
                 self.level,
                 0,
             )
-        } */ else {
+        } */
+        else {
             self.clauses.push(clause);
         }
     }
 
     // Implement the CDCL algorithm
     fn cdcl(&mut self, maxtime: Option<Duration>) -> Duration {
-        
         let start = Instant::now();
         self.propagate();
-        
-        while self.working_model.state_formula(&self.clauses) != BoolValue::True {
 
+        while self.working_model.state_formula(&self.clauses) != BoolValue::True {
             if let Some(time) = maxtime {
                 if start.elapsed() > time {
                     self.status = None;
@@ -102,10 +102,10 @@ impl Solver {
         // use random_unassigned for random variable
         // and assigns a random bool
         self.working_model.assign(
-            self.working_model.next_unassigned(), 
+            self.working_model.next_unassigned(),
             BoolValue::True,
-             self.level,
-             0,
+            self.level,
+            0,
         )
     }
 
@@ -131,8 +131,9 @@ impl Solver {
                         self.level,
                         index_number,
                     );
-                    
-                    self.working_model.add_implications(to_be_set_true.get_var(), clause.clone())
+
+                    self.working_model
+                        .add_implications(to_be_set_true.get_var(), clause.clone())
                 }
             }
         }
@@ -140,7 +141,6 @@ impl Solver {
 
     // Implement conflict resolution and clause learning
     fn analyze_conflict(&mut self) -> (i32, Clause) {
-
         let conflict = self.working_model.conflicting(&self.clauses);
         let conflict_clause = self.working_model.find_conflict(&conflict.unwrap());
         // find decision level to backtrack to
@@ -151,7 +151,7 @@ impl Solver {
                 max = self.working_model.level(lit.get_var())
             }
         }
-        return (max as i32 - 1, conflict_clause)
+        (max as i32 - 1, conflict_clause)
     }
 
     fn backtrack(&mut self, level: usize) {
