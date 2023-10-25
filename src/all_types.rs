@@ -331,7 +331,7 @@ impl WorkingModel {
         }
         panic!("no variable ?")
     }
-    pub fn radom_unassigned(&self) -> Var {
+    pub fn random_unassigned(&self) -> Var {
         Var::from_id((0..self.assigns.len()).filter(|&var| self.assigns[var] == BoolValue::Undefined).choose(&mut rand::thread_rng()).unwrap())
     }
     pub fn get_assigned(&self) -> &Vec<BoolValue> {

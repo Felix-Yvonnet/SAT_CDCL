@@ -68,7 +68,7 @@ impl Solver {
                 let (lvl, learnt) = self.analyze_conflict();
                 println!("adding clause :");
                 for lit in &learnt {
-                    println!("{} {:?}", lit.is_pos(), lit.get_var())
+                    println!("    {} {:?}", lit.is_pos(), lit.get_var())
                 }
                 self.backtrack(lvl as usize);
                 self.add_clause(learnt);
@@ -124,7 +124,7 @@ impl Solver {
                     index_number += 1;
 
                     let to_be_set_true = self.working_model.is_unit_clause(clause).unwrap();
-                    println!(" unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
+                    println!("    unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
