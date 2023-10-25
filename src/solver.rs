@@ -6,7 +6,7 @@ pub struct Solver {
     // The clauses (initial and added ones)
     clauses: AllClauses,
     // Assignments of vars and decision levels of the assignments
-    // and the implicatioon graph
+    // and the implication graph
     working_model: WorkingModel,
     // Wether it is sat or not
     pub status: Option<bool>,
@@ -60,22 +60,29 @@ impl Solver {
                 }
             }
             while self.working_model.state_formula(&self.clauses) == BoolValue::False {
+                println!("State of the formula is false");
                 if self.level == 0 {
                     self.status = Some(false);
                     return start.elapsed();
                 }
                 let (lvl, learnt) = self.analyze_conflict();
-                self.add_clause(learnt);
+                println!("adding clause :");
+                for lit in &learnt {
+                    println!("{} {:?}", lit.is_pos(), lit.get_var())
+                }
                 self.backtrack(lvl as usize);
-
+                self.add_clause(learnt);
                 self.propagate();
+                println!("ended backtracking and propagation");
             }
             if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
+                println!("State of the formula is undefined");
                 self.level += 1;
                 self.decide();
                 self.propagate();
             }
         }
+        println!("state of the forumula is true... ending");
         self.status = Some(true);
         start.elapsed()
     }
@@ -90,9 +97,10 @@ impl Solver {
 
     // Implement the decision phase of CDCL
     fn decide(&mut self) {
+        println!("deciding {:?} to 1 at level {}", self.working_model.next_unassigned(), self.level);
         // TODO
-        // Implement variable decision heuristic (e.g., VSIDS, random, etc.)
-        // Assign the chosen variable
+        // use random_unassigned for random variable
+        // and assigns a random bool
         self.working_model.assign(
             self.working_model.next_unassigned(), 
             BoolValue::True,
@@ -111,10 +119,12 @@ impl Solver {
 
             for clause in self.clauses.clauses.iter() {
                 if self.working_model.is_unit_clause(clause).is_some() {
+
                     something_was_done = true;
                     index_number += 1;
 
                     let to_be_set_true = self.working_model.is_unit_clause(clause).unwrap();
+                    println!(" unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
@@ -145,11 +155,14 @@ impl Solver {
     }
 
     fn backtrack(&mut self, level: usize) {
+        println!("backtracking to {}", level);
         self.level = level;
         self.working_model.backtracking(level);
     }
 
+    /* 
     pub fn assigns(&self) -> Vec<BoolValue> {
         self.working_model.get_assigned().clone()
     }
+    */
 }
