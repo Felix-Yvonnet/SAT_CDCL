@@ -223,6 +223,8 @@ impl WorkingModel {
     pub fn impl_is_empty(&self, var: Var) -> bool {
         self.impl_graph.0[var].is_empty()
     }
+    // adds implication in implication graph
+    // by taking unit clause and unnassigned variable that is to be set true in argument
     pub fn add_implications(&mut self, var: Var, clause: Clause) {
         for lit in clause.iter() {
             if lit.get_var() != var {
@@ -234,21 +236,21 @@ impl WorkingModel {
         // backtracking the implication graph to find the sources of the conflict
         // creates the conflict clause
         let mut stack = Vec::new();
-        let mut conflicting = Vec::new();
+        let mut conflict_clause = Vec::new();
         for lit in conflict {
             stack.push(*lit)
         }
         while !stack.is_empty() {
             let lit = stack.pop().unwrap();
-            if self.impl_graph.0[lit.get_var()].is_empty() && !conflicting.contains(&!lit) {
-                conflicting.push(!lit)
+            if self.impl_graph.0[lit.get_var()].is_empty() && !conflict_clause.contains(&!lit) {
+                conflict_clause.push(!lit)
             } else {
                 for lit_dep in &self.impl_graph.0[lit.get_var()] {
                     stack.push(*lit_dep)
                 }
             }
         }
-        conflicting
+        conflict_clause
     }
 
     // evaluate the state of each clause
@@ -270,12 +272,19 @@ impl WorkingModel {
 
     // evaluate the state of the formula
     pub fn state_formula(&self, formula: &AllClauses) -> BoolValue {
+        let mut is_undefined = false;
         for clause in &formula.clauses {
-            if self.state_clause(clause) != BoolValue::True {
-                return self.state_clause(clause);
-            }
+            match self.state_clause(clause) {
+            BoolValue::False => return BoolValue::False,
+            BoolValue::Undefined => is_undefined = true,
+            _ => {}
+            } 
         }
-        BoolValue::True
+        if is_undefined {
+            BoolValue::Undefined
+        } else {
+            BoolValue::True
+        }
     }
 
     // find conflict when state of the formula is false
