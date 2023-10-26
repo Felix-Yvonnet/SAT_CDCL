@@ -183,7 +183,7 @@ impl std::ops::Not for BoolValue {
 
 #[derive(Debug, Default)]
 pub struct ImplGraph(Vec<Vec<Lit>>);
-// If p in impl_graph[q] then p goes to negornotneg q in the implication graph
+// If p in impl_graph[q] then p goes to q in the implication graph
 
 #[derive(Debug, Default)]
 pub struct WorkingModel {
@@ -238,9 +238,10 @@ impl WorkingModel {
         for lit in conflict {
             stack.push(*lit)
         }
-        while let Some(lit) = stack.pop() {
-            if self.impl_graph.0[lit.get_var()].is_empty() {
-                conflicting.push(lit)
+        while !stack.is_empty() {
+            let lit = stack.pop().unwrap();
+            if self.impl_graph.0[lit.get_var()].is_empty() && !conflicting.contains(&!lit) {
+                conflicting.push(!lit)
             } else {
                 for lit_dep in &self.impl_graph.0[lit.get_var()] {
                     stack.push(*lit_dep)
@@ -253,19 +254,18 @@ impl WorkingModel {
     // evaluate the state of each clause
     pub fn state_clause(&self, clause: &Clause) -> BoolValue {
         let mut state_clause = BoolValue::False;
-        for lit in clause {
-            match self.eval(*lit) {
-                BoolValue::True => {
-                    state_clause = BoolValue::True;
-                    break;
-                }
-                BoolValue::Undefined => {
-                    state_clause = BoolValue::Undefined;
-                }
-                _ => {}
+            for lit in clause {
+                match self.eval(*lit) {
+                    BoolValue::True => {
+                        return BoolValue::True;
+                    }
+                    BoolValue::Undefined => {
+                        state_clause = BoolValue::Undefined;
+                    }
+                    _ => {}
+                } 
             }
-        }
-        state_clause
+        return state_clause
     }
 
     // evaluate the state of the formula
@@ -324,21 +324,26 @@ impl WorkingModel {
         true
     }
     pub fn next_unassigned(&self) -> Var {
-        Var::from_id(
-            (0..self.assigns.len())
-                .filter(|&var| self.assigns[var] == BoolValue::Undefined)
-                .choose(&mut rand::thread_rng())
-                .unwrap(),
-        )
+        for i in 0..self.assigns.len() {
+            if self.assigns[i] == BoolValue::Undefined {
+                return Var::from_id(i)
+            }
+        }
+        panic!("no variable ?")
+    }
+    pub fn random_unassigned(&self) -> Var {
+        Var::from_id((0..self.assigns.len()).filter(|&var| self.assigns[var] == BoolValue::Undefined).choose(&mut rand::thread_rng()).unwrap())
     }
     pub fn get_assigned(&self) -> &Vec<BoolValue> {
         &self.assigns
     }
+    //implements backtracking : modifies the working model
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind].0 > level {
                 self.decision_level[ind] = (0, 0);
                 self.assigns[ind] = BoolValue::Undefined;
+                self.impl_graph.0[ind] = Vec::new();
             }
         }
     }
