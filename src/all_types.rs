@@ -238,7 +238,7 @@ impl WorkingModel {
         let mut stack = Vec::new();
         let mut conflict_clause = Vec::new();
         for lit in conflict {
-            stack.push(*lit)
+            stack.push(!*lit)
         }
         while !stack.is_empty() {
             let lit = stack.pop().unwrap();
@@ -291,7 +291,7 @@ impl WorkingModel {
     pub fn conflicting(&self, formula: &AllClauses) -> Option<Clause> {
         for clause in &formula.clauses {
             if self.state_clause(clause) == BoolValue::False {
-                return Some(clause.clone());
+                return Some(clause.to_vec());
             }
         }
         None
