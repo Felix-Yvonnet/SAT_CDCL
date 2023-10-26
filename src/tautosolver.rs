@@ -15,6 +15,7 @@ impl TautoSolver {
         }
     }
 
+    #[cfg(test)]
     pub fn assigns(&self) -> Vec<BoolValue> {
         self.assigns.clone()
     }
@@ -68,7 +69,7 @@ impl TautoSolver {
         let result = self.ssolve(i + 1, start, max_time);
 
         result?;
-        
+
         if let Some(time) = max_time {
             if start.elapsed() > time {
                 return None;

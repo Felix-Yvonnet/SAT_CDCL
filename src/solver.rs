@@ -31,7 +31,7 @@ impl Solver {
     pub fn add_clause(&mut self, clause: Clause) {
         if clause.is_empty() {
             self.status = Some(false);
-        }else if clause.len() == 1 {
+        } else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
                 lit.get_var(),
@@ -39,8 +39,7 @@ impl Solver {
                 self.level,
                 0,
             )
-        }
-        else {
+        } else {
             self.clauses.push(clause);
         }
     }
@@ -95,7 +94,11 @@ impl Solver {
 
     // Implement the decision phase of CDCL
     fn decide(&mut self) {
-        println!("deciding {:?} to 1 at level {}", self.working_model.next_unassigned(), self.level);
+        println!(
+            "deciding {:?} to 1 at level {}",
+            self.working_model.next_unassigned(),
+            self.level
+        );
         // TODO
         // use random_unassigned for random variable
         // and assigns a random bool
@@ -117,12 +120,15 @@ impl Solver {
 
             for clause in self.clauses.clauses.iter() {
                 if self.working_model.is_unit_clause(clause).is_some() {
-
                     something_was_done = true;
                     index_number += 1;
 
                     let to_be_set_true = self.working_model.is_unit_clause(clause).unwrap();
-                    println!("    unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
+                    println!(
+                        "    unit propagation sets {:?} to {:?}",
+                        to_be_set_true.get_var(),
+                        BoolValue::from(to_be_set_true.is_neg() as i8)
+                    );
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
@@ -158,9 +164,8 @@ impl Solver {
         self.working_model.backtracking(level);
     }
 
-    /* 
+    #[cfg(test)]
     pub fn assigns(&self) -> Vec<BoolValue> {
         self.working_model.get_assigned().clone()
     }
-    */
 }

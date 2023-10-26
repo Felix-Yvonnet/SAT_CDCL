@@ -10,6 +10,7 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
     let mut var_num = 0;
     let mut cl_num = 0;
     let mut clauses = vec![];
+    let mut seen_p = false;
     for line in reader.lines() {
         let line = line?;
         let line = line.trim();
@@ -24,6 +25,7 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
             continue;
         }
         if values[0] == "p" {
+            seen_p = true;
             if let Some(v) = values.get(2) {
                 // Get the number of variables
                 var_num = v.parse::<usize>().unwrap();
@@ -37,6 +39,10 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
                 eprintln!("Error parsing, \"p\" line should contains the number of clauses.");
             };
             continue;
+        }
+
+        if values[values.len() - 1] != "0" {
+            panic!("\"0\" character expected at the end of the line.\n Not supposed to be the case but that how I've done it.");
         }
 
         let values: Vec<_> = values
@@ -54,6 +60,9 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
             .map(|&x| crate::all_types::Lit::from(x))
             .collect();
         clauses.push(clause);
+    }
+    if !seen_p {
+        panic!("A line containing \"p cnf <var number> <clause number>\" is expected.")
     }
     if cl_num != clauses.len() {
         // We found an empty clause, ie the formula is false.
