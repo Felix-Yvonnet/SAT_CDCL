@@ -30,10 +30,8 @@ impl Solver {
 
     pub fn add_clause(&mut self, clause: Clause) {
         if clause.is_empty() {
-            // self.status = Some(false);
-            panic!("when does this happen ?")
-        }
-        /* else if clause.len() == 1 {
+            self.status = Some(false);
+        }else if clause.len() == 1 {
             let lit = clause[0];
             self.working_model.assign(
                 lit.get_var(),
@@ -41,7 +39,7 @@ impl Solver {
                 self.level,
                 0,
             )
-        } */
+        }
         else {
             self.clauses.push(clause);
         }

@@ -296,7 +296,7 @@ mod tests {
                                     "Failed in my code T_T cnf: {}, Result: {:?} Expected: {:?}",
                                     path_str, satisfiable, expected
                                 );
-                                assert!(false);
+                                panic!("Implementation mistake");
                             } else {
                                 eprintln!("\x1b[32mSuccess\x1b[0m")
                             }
@@ -305,7 +305,8 @@ mod tests {
                                 "Mismatch cnf: {}, Result: {:?} Expected: {:?}",
                                 path_str, satisfiable, expected
                             );
-                            assert!(false);
+                            panic!("Code mistake");
+
                         }
                     }
                 }

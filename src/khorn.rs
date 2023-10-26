@@ -5,21 +5,27 @@ pub struct KhornSolver {
     num_var: usize,
     num_clauses: usize,
     clauses: CAllClauses,
+    status: Option<bool>,
     assigned_pos: Vec<Var>,
 }
 
 impl KhornSolver {
     pub fn new(mut clauses: CNF) -> Self {
+        let mut status = None;
         let mut new_clauses = vec![];
         for clause in clauses.iter() {
-            new_clauses.push(CClause::new(clause.clone(), {
-                let ind = clause.iter().position(|lit| lit.is_pos());
-                ind.map(|i| clause[i].get_var())
-            }));
+            if clause.is_empty() { status = Some(false) }
+            else {
+                new_clauses.push(CClause::new(clause.clone(), {
+                    let ind = clause.iter().position(|lit| lit.is_pos());
+                    ind.map(|i| clause[i].get_var())
+                }));
+            }
         }
         KhornSolver {
             num_var: clauses.var_num,
             num_clauses: clauses.cl_num,
+            status,
             clauses: CAllClauses::new(new_clauses),
             assigned_pos: vec![],
         }
@@ -27,7 +33,11 @@ impl KhornSolver {
 
     pub fn solve(&mut self) -> (bool, std::time::Duration) {
         let start = std::time::Instant::now();
-        (self.linear_solve(), start.elapsed())
+        if let Some(status) = self.status { 
+            (status, start.elapsed())
+        } else {
+            (self.linear_solve(), start.elapsed())
+        }
     }
 
 // Is not really functional and has a worst complexity so don't care
