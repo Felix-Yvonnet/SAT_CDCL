@@ -10,17 +10,17 @@ pub struct SAT2 {
 impl SAT2 {
     pub fn new(cnf: CNF) -> SAT2 {
         if cnf.clauses.is_empty() {
-            return SAT2{
+            return SAT2 {
                 impl_graph: DiGraph::new(),
                 status: Some(true),
                 assigns: vec![],
-            }
+            };
         } else if cnf.clauses[0].is_empty() {
-            return SAT2{
+            return SAT2 {
                 impl_graph: DiGraph::new(),
                 status: Some(false),
                 assigns: vec![],
-            }
+            };
         }
         let mut impl_graph = DiGraph::new();
         let mut all_lits: Vec<Option<petgraph::stable_graph::NodeIndex>> =
@@ -53,7 +53,9 @@ impl SAT2 {
     }
 
     pub fn solve(&mut self) -> bool {
-        if let Some(status) = self.status { return status };
+        if let Some(status) = self.status {
+            return status;
+        };
         let sccs = petgraph::algo::tarjan_scc(&self.impl_graph);
         for scc in sccs {
             let mut all_literals = std::collections::HashSet::new();

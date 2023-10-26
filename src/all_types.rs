@@ -256,18 +256,18 @@ impl WorkingModel {
     // evaluate the state of each clause
     pub fn state_clause(&self, clause: &Clause) -> BoolValue {
         let mut state_clause = BoolValue::False;
-            for lit in clause {
-                match self.eval(*lit) {
-                    BoolValue::True => {
-                        return BoolValue::True;
-                    }
-                    BoolValue::Undefined => {
-                        state_clause = BoolValue::Undefined;
-                    }
-                    _ => {}
-                } 
+        for lit in clause {
+            match self.eval(*lit) {
+                BoolValue::True => {
+                    return BoolValue::True;
+                }
+                BoolValue::Undefined => {
+                    state_clause = BoolValue::Undefined;
+                }
+                _ => {}
             }
-        return state_clause
+        }
+        return state_clause;
     }
 
     // evaluate the state of the formula
@@ -335,14 +335,20 @@ impl WorkingModel {
     pub fn next_unassigned(&self) -> Var {
         for i in 0..self.assigns.len() {
             if self.assigns[i] == BoolValue::Undefined {
-                return Var::from_id(i)
+                return Var::from_id(i);
             }
         }
         panic!("no variable ?")
     }
     pub fn random_unassigned(&self) -> Var {
-        Var::from_id((0..self.assigns.len()).filter(|&var| self.assigns[var] == BoolValue::Undefined).choose(&mut rand::thread_rng()).unwrap())
+        Var::from_id(
+            (0..self.assigns.len())
+                .filter(|&var| self.assigns[var] == BoolValue::Undefined)
+                .choose(&mut rand::thread_rng())
+                .unwrap(),
+        )
     }
+    #[cfg(test)]
     pub fn get_assigned(&self) -> &Vec<BoolValue> {
         &self.assigns
     }

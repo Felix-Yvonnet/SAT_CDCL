@@ -47,7 +47,7 @@ fn get_cnfs(files: Vec<String>) -> Vec<CNF> {
     cnfs
 }
 
-fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: bool) {
+fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose: bool) {
     for cnf in cnfs {
         let mut solver = solver::Solver::new(cnf);
         let time_spent = solver.solve(max_time).as_secs_f64();
@@ -55,40 +55,35 @@ fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
             println!("Time duration exceeded");
         } else {
             println!(
-                "Solved and obtained : {}",
+                "Solved in {time_spent} and obtained : {}",
                 if solver.status.unwrap() {
                     "\x1b[32mSAT\x1b[0m"
                 } else {
                     "\x1b[31mUNSAT\x1b[0m"
                 }
             );
-            if verbose {
-                println!("Solved in {time_spent} seconds");
-            }
         }
     }
 }
 
-fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: bool) {
+fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, _verbose: bool) {
     for cnf in cnfs {
         println!("Solving...");
         let mut solver = khorn::KhornSolver::new(cnf);
         let (is_sat, time_spent) = solver.solve();
         println!(
-            "Solved and obtained : {}",
+            "Solved ine {} and obtained : {}",
+            time_spent.as_secs_f64(),
             if is_sat {
                 "\x1b[32mSAT\x1b[0m"
             } else {
                 "\x1b[31mUNSAT\x1b[0m"
             }
         );
-        if verbose {
-            println!("Solved in {} seconds", time_spent.as_secs_f64());
-        }
     }
 }
 
-fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: bool) {
+fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose: bool) {
     let mut mean_time = 0.;
     let mut total_count = 0;
     for cnf in cnfs {
@@ -99,16 +94,14 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
             println!("Time duration exceeded");
         } else {
             println!(
-                "Solved and obtained : {}",
+                "Solved in {} and obtained : {}",
+                time_spent.as_secs_f64(),
                 if is_sat.unwrap() {
                     "\x1b[32mSAT\x1b[0m"
                 } else {
                     "\x1b[31mUNSAT\x1b[0m"
                 }
             );
-            if verbose {
-                println!("Solved in {} seconds", time_spent.as_secs_f64());
-            }
             total_count += 1;
             mean_time += time_spent.as_secs_f64();
         }
@@ -120,7 +113,7 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, verbose: 
     )
 }
 
-fn sat2_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: bool) {
+fn sat2_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, _verbose: bool) {
     for cnf in cnfs {
         let start = std::time::Instant::now();
         let mut solver = sat2::SAT2::new(cnf.clone());
@@ -135,13 +128,6 @@ fn sat2_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, verbose: 
                 "\x1b[31mUNSAT\x1b[0m"
             }
         );
-        if verbose {
-            println!("No time for this one yet");
-        }
-        let assigns = solver.assigns;
-        if is_sat && !sat_model_check(cnf.clauses.as_slice(), &assigns) {
-            println!("Fuck off!!!");
-        }
     }
 }
 
@@ -154,6 +140,7 @@ fn help() {
     println!("--cdcl        Using the CDCL solver");
     println!("--khorn       Using the Khorn solver");
     println!("--dummy       Using the dummy solver");
+    println!("--2sat        Using the 2sat solver");
     println!("-v --verbose  Print the model and different informations");
     println!("-t --time     Limit the maximum time (in seconds) to spend searching");
     println!("For example `./sat_solver --cdcl tests/sat/horn1.cnf tests/unsat/php6-4.cnf` will returns :");
@@ -177,19 +164,36 @@ fn main() {
     let cnfs = get_cnfs(files);
     let max_time = {
         let time = flags.iter().find(|&f| f.parse::<u64>().is_ok());
-        time.map(|t| std::time::Duration::from_secs(
-            t.parse::<u64>().ok().unwrap(),
-        ))
+        time.map(|t| std::time::Duration::from_secs(t.parse::<u64>().ok().unwrap()))
     };
 
     let verbose = flags.contains(&"-v".to_string()) || flags.contains(&"--verbose".to_string());
 
-    if !flags
-        .iter()
-        .any(|f| f.starts_with('-') && !(f.starts_with("-v")) && !(f.starts_with("--v")))
-    {
+    let mut has_predefined_solver = false;
+    for flag in flags {
+        if flag == "--cdcl" {
+            quick_solver(cnfs.clone(), max_time, verbose);
+            has_predefined_solver = true;
+        }
+        if flag == "--khorn" {
+            if verbose && !khorn::is_khorn(&cnfs[0]) {
+                println!("\x1b[31mNot a Horn\x1b[0m configuration but go on")
+            }
+            has_predefined_solver = true;
+            khorn_solver(cnfs.clone(), max_time, verbose);
+        }
+        if flag == "--dummy" {
+            has_predefined_solver = true;
+            dummy_solver(cnfs.clone(), max_time, verbose);
+        }
+        if flag == "--2sat" {
+            has_predefined_solver = true;
+            sat2_solver(cnfs.clone(), max_time, verbose);
+        }
+    }
+    if !has_predefined_solver {
         // No flags (other than the timer or verbose) are set
-        for cnf in cnfs.clone() {
+        for cnf in cnfs {
             if sat2::is_2sat(&cnf) {
                 sat2_solver(vec![cnf], max_time, verbose);
             } else if khorn::is_khorn(&cnf) {
@@ -199,23 +203,9 @@ fn main() {
             }
         }
     }
-    if flags.contains(&"--cdcl".to_string()) {
-        quick_solver(cnfs.clone(), max_time, verbose);
-    }
-    if flags.contains(&"--khorn".to_string()) {
-        if verbose && !khorn::is_khorn(&cnfs[0]) {
-            println!("\x1b[31mNot a Horn\x1b[0m configuration but go on")
-        }
-        khorn_solver(cnfs.clone(), max_time, verbose);
-    }
-    if flags.contains(&"--dummy".to_string()) {
-        dummy_solver(cnfs.clone(), max_time, verbose);
-    }
-    if flags.contains(&"--2sat".to_string()) {
-        sat2_solver(cnfs, max_time, verbose);
-    }
 }
 
+#[cfg(test)]
 fn sat_model_check(clauses: &[Vec<Lit>], assigns: &[BoolValue]) -> bool {
     for clause in clauses.iter() {
         let mut satisfied = false;
@@ -264,7 +254,7 @@ mod tests {
                 exit(1);
             }
         };
-        let entries = WalkDir::new(format!("tests/{}/", which));
+        let entries = WalkDir::new(format!("tests/small/{}/", which));
         for entry in entries
             .into_iter()
             .filter_map(|e| e.ok())
@@ -278,8 +268,6 @@ mod tests {
                 let mut solver = Solver::new(cnf);
                 solver.solve(Some(std::time::Duration::from_secs(1)));
                 let status = solver.status;
-                // let mut solver = TautoSolver::new(cnf.var_num, cnf.clauses);
-                // let (status, time) = solver.solve(Some(std::time::Duration::from_secs(1)));
 
                 match status {
                     None => {
@@ -292,21 +280,18 @@ mod tests {
                             if satisfiable
                                 && !sat_model_check(tmp_clauses.as_slice(), &solver.assigns())
                             {
-                                eprintln!(
-                                    "Failed in my code T_T cnf: {}, Result: {:?} Expected: {:?}",
-                                    path_str, satisfiable, expected
+                                panic!(
+                                    "Failed in my code T_T cnf: {}, Result: {}{:?}\x1b[0m Expected: {}{:?}\x1b[0m",
+                                    path_str, if satisfiable {"\x1b[32m"} else {"\x1b[31m"}, satisfiable, if expected {"\x1b[32m"} else {"\x1b[31m"}, expected
                                 );
-                                panic!("Implementation mistake");
                             } else {
                                 eprintln!("\x1b[32mSuccess\x1b[0m")
                             }
                         } else {
-                            eprintln!(
-                                "Mismatch cnf: {}, Result: {:?} Expected: {:?}",
+                            panic!(
+                                "Mismatch cnf: {}, Result: \x1b[31m{:?}\x1b[0m Expected: \x1b[32m{:?}\x1b[0m",
                                 path_str, satisfiable, expected
                             );
-                            panic!("Code mistake");
-
                         }
                     }
                 }
@@ -315,8 +300,21 @@ mod tests {
     }
 
     #[test]
-    fn test_solve() {
+    fn test_sat() {
         test_all_files("sat");
+    }
+    #[test]
+    fn test_unsat() {
         test_all_files("unsat");
+    }
+    #[test]
+    #[should_panic]
+    fn test_parsing() {
+        parse_cnf("./tests/parsing/no_p.cnf").unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn test_parsing2() {
+        parse_cnf("./tests/parsing/multi_line.cnf").unwrap();
     }
 }

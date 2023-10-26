@@ -166,9 +166,8 @@ impl Solver {
         self.working_model.backtracking(level);
     }
 
-    /* 
+    #[cfg(test)]
     pub fn assigns(&self) -> Vec<BoolValue> {
         self.working_model.get_assigned().clone()
     }
-    */
 }
