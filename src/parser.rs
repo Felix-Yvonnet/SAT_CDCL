@@ -55,10 +55,18 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
             .collect();
         clauses.push(clause);
     }
-    debug_assert!(cl_num == clauses.len());
-    Ok(crate::all_types::CNF {
-        var_num,
-        cl_num,
-        clauses,
-    })
+    if cl_num != clauses.len() {
+        // We found an empty clause, ie the formula is false.
+        Ok(crate::all_types::CNF {
+            var_num,
+            cl_num,
+            clauses: vec![vec![]],
+        })
+    } else {
+        Ok(crate::all_types::CNF {
+            var_num,
+            cl_num,
+            clauses,
+        })
+    }
 }
