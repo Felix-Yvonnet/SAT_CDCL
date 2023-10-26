@@ -223,6 +223,8 @@ impl WorkingModel {
     pub fn impl_is_empty(&self, var: Var) -> bool {
         self.impl_graph.0[var].is_empty()
     }
+    // adds implication in implication graph
+    // by taking unit clause and unnassigned variable that is to be set true in argument
     pub fn add_implications(&mut self, var: Var, clause: Clause) {
         for lit in clause.iter() {
             if lit.get_var() != var {

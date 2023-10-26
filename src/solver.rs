@@ -60,7 +60,7 @@ impl Solver {
                 }
             }
             while self.working_model.state_formula(&self.clauses) == BoolValue::False {
-                println!("State of the formula is false");
+                // println!("State of the formula is false");
                 if self.level == 0 {
                     self.status = Some(false);
                     return start.elapsed();
@@ -73,16 +73,16 @@ impl Solver {
                 self.backtrack(lvl as usize);
                 self.add_clause(learnt);
                 self.propagate();
-                println!("ended backtracking and propagation");
+                // println!("ended backtracking and propagation");
             }
             if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
-                println!("State of the formula is undefined");
+                // println!("State of the formula is undefined");
                 self.level += 1;
                 self.decide();
                 self.propagate();
             }
         }
-        println!("state of the forumula is true... ending");
+        // println!("state of the formula is true... ending");
         self.status = Some(true);
         start.elapsed()
     }
@@ -124,7 +124,7 @@ impl Solver {
                     index_number += 1;
 
                     let to_be_set_true = self.working_model.is_unit_clause(clause).unwrap();
-                    println!("    unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
+                    // println!("    unit propagation sets {:?} to {:?}", to_be_set_true.get_var(), BoolValue::from(to_be_set_true.is_neg() as i8) );
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
