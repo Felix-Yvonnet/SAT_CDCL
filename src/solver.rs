@@ -16,7 +16,7 @@ pub struct Solver {
 }
 
 impl Solver {
-    pub fn new(mut clauses: CNF) -> Self {
+    pub fn new(clauses: &mut Cnf) -> Self {
         let n = clauses.var_num;
         let mut solver = Solver {
             clauses: AllClauses { clauses: vec![] },
@@ -25,31 +25,34 @@ impl Solver {
             level: 0,
         };
         clauses.iter().for_each(|clause| {
-            solver.add_clause(clause.to_vec());
+            if clause.is_empty() {
+                solver.status = Some(false);
+            } else {
+                solver.add_clause(clause.to_vec());
+            }
         });
         solver
     }
 
-    pub fn add_clause(&mut self, clause: Clause) {
-        if clause.is_empty() {
-            self.status = Some(false);
-        } else
-        /*  if clause.len() == 1 {
+    pub fn add_clause(&mut self, clause: Clause) -> bool {
+        if clause.len() == 1 {
             let lit = clause[0];
+            if self.working_model.eval(lit) == BoolValue::False {
+                self.status = Some(false);
+                return false;
+            }
             self.working_model.assign(
                 lit.get_var(),
                 BoolValue::from(lit.is_neg() as i8),
                 self.level,
-                0,
             )
-        }
-        else */
-        {
+        } else {
             self.clauses.push(clause);
         }
+        true
     }
 
-    // Implement the CDCL algorithm
+    /// Implement the CDCL algorithm
     fn cdcl(&mut self, maxtime: Option<Duration>) -> Duration {
         let start = Instant::now();
         self.propagate();
@@ -62,23 +65,18 @@ impl Solver {
                 }
             }
             while self.working_model.state_formula(&self.clauses) == BoolValue::False {
-                //println!("State of the formula is false");
                 if self.level == 0 {
                     self.status = Some(false);
                     return start.elapsed();
                 }
                 let (lvl, learnt) = self.analyze_conflict();
-                println!("adding clause :");
-                for lit in &learnt {
-                    println!("    {} {:?}", lit.is_pos(), lit.get_var().0 + 1)
-                }
                 self.backtrack(lvl as usize);
-                self.add_clause(learnt);
+                if !self.add_clause(learnt) {
+                    return start.elapsed();
+                }
                 self.propagate();
-                println!("ended backtracking and propagation");
             }
             if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
-                println!("State of the formula is undefined");
                 self.level += 1;
                 self.decide();
                 self.propagate();
@@ -99,9 +97,8 @@ impl Solver {
         self.cdcl(maxtime)
     }
 
-    // Implement the decision phase of CDCL
+    /// Implement the decision phase of CDCL
     fn decide(&mut self) {
-        println!("deciding {:?} to 1 at level {}", self.working_model.next_unassigned().0 + 1, self.level);
         // TODO
         // use random_unassigned for random variable
         // and assigns a random bool
@@ -109,14 +106,12 @@ impl Solver {
             self.working_model.next_unassigned(),
             BoolValue::True,
             self.level,
-            0,
         )
     }
 
     // Implement clause propagation
     fn propagate(&mut self) {
         let mut something_was_done: bool = true;
-        let mut index_number: usize = 1;
 
         while something_was_done {
             something_was_done = false;
@@ -124,17 +119,14 @@ impl Solver {
             for clause in self.clauses.clauses.iter() {
                 if let Some(to_be_set_true) = self.working_model.is_unit_clause(clause) {
                     something_was_done = true;
-                    index_number += 1;
-                    println!("    unit propagation sets {:?} to {:?}", to_be_set_true.get_var().0 + 1, BoolValue::from(to_be_set_true.is_neg() as i8) );
                     self.working_model.assign(
                         to_be_set_true.get_var(),
                         BoolValue::from(to_be_set_true.is_neg() as i8),
                         self.level,
-                        index_number,
                     );
 
                     self.working_model
-                        .add_implications(to_be_set_true.get_var(), clause.clone())
+                        .add_implications(to_be_set_true.get_var(), clause)
                 }
             }
         }
@@ -143,34 +135,28 @@ impl Solver {
     // Implement conflict resolution and clause learning
     fn analyze_conflict(&mut self) -> (i32, Clause) {
         if let Some(conflict) = self.working_model.conflicting(&self.clauses) {
-            println!("state of the formula is false due to :");
-            for lit in &conflict {
-                println!("    {} {:?}", lit.is_pos(), lit.get_var().0 + 1)
-            }
             let conflict_clause = self.working_model.find_conflict(&conflict);
             // find decision level to backtrack to
             // it is the maximum of all the decision levels in conflict clause - 1
             let mut max = self.working_model.level(conflict_clause[0].get_var());
             for lit in &conflict_clause {
-                let current = self.working_model.level(lit.get_var()); 
+                let current = self.working_model.level(lit.get_var());
                 if current > max {
                     max = current
                 }
             }
             (max as i32 - 1, conflict_clause)
         } else {
-            panic!("entered conflict analysis without a conflict")
-        }   
+            self::panic!("entered conflict analysis without a conflict")
+        }
     }
 
     fn backtrack(&mut self, level: usize) {
-        println!("backtracking to {}", level);
         self.level = level;
         self.working_model.backtracking(level);
     }
 
-    #[cfg(test)]
-    pub fn assigns(&self) -> Vec<BoolValue> {
-        self.working_model.get_assigned().clone()
+    pub fn assigns(&self) -> &Vec<BoolValue> {
+        self.working_model.get_assigned()
     }
 }

@@ -11,7 +11,7 @@ pub struct SAT2 {
 }
 
 impl SAT2 {
-    pub fn new(cnf: CNF) -> SAT2 {
+    pub fn new(cnf: Cnf) -> SAT2 {
         if cnf.clauses.is_empty() {
             return SAT2 {
                 impl_graph: DiGraph::new(),
@@ -77,7 +77,7 @@ impl SAT2 {
     }
 }
 
-pub fn is_2sat(cnf: &CNF) -> bool {
+pub fn is_2sat(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {
         if clause.len() > 2 {
             return false;

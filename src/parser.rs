@@ -11,7 +11,7 @@ use std::io::BufRead;
 /// -1 -2 0
 /// 1 0
 /// ```
-pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
+pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::Cnf> {
     let input = match std::fs::File::open(path) {
         Err(e) => panic!("Impossible to open file: {e}"),
         Ok(f) => f,
@@ -73,13 +73,13 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::CNF> {
     }
     if cl_num != clauses.len() {
         // We found an empty clause, ie the formula is false.
-        Ok(crate::all_types::CNF {
+        Ok(crate::all_types::Cnf {
             var_num,
             cl_num,
             clauses: vec![vec![]],
         })
     } else {
-        Ok(crate::all_types::CNF {
+        Ok(crate::all_types::Cnf {
             var_num,
             cl_num,
             clauses,

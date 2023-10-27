@@ -13,7 +13,7 @@ pub struct KhornSolver {
 }
 
 impl KhornSolver {
-    pub fn new(mut clauses: CNF) -> Self {
+    pub fn new(mut clauses: Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
         for clause in clauses.iter() {
@@ -49,9 +49,13 @@ impl KhornSolver {
         let mut score: Vec<u32> = vec![0; self.num_clauses]; // ind(clause) -> score
         let mut clauses_with_negvar: Vec<HashSet<u32>> = vec![HashSet::new(); self.num_var]; // var -> list[ind(clause)]
         assert!(self.clauses.clauses.len() == self.num_clauses);
-        for k in 0..self.clauses.clauses.len() {
+        for (k, scorek) in score
+            .iter_mut()
+            .enumerate()
+            .take(self.clauses.clauses.len())
+        {
             for lit in self.clauses.clauses[k].iter() {
-                score[k] += lit.is_neg() as u32;
+                *scorek += lit.is_neg() as u32;
                 if lit.is_neg() {
                     clauses_with_negvar[lit.get_var()].insert(k as u32);
                 }
@@ -85,7 +89,7 @@ impl KhornSolver {
         true
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub fn assigns(&self) -> Vec<BoolValue> {
         let mut assigns = vec![BoolValue::False; self.num_var];
         for var in self.assigned_pos.iter() {
@@ -95,7 +99,7 @@ impl KhornSolver {
     }
 }
 
-pub fn is_khorn(cnf: &CNF) -> bool {
+pub fn is_khorn(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {
         let mut seen_pos = false;
         for lit in clause {

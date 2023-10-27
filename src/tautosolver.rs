@@ -9,7 +9,7 @@ pub struct TautoSolver {
 }
 
 impl TautoSolver {
-    pub fn new(cnf: CNF) -> TautoSolver {
+    pub fn new(cnf: Cnf) -> TautoSolver {
         TautoSolver {
             n: cnf.var_num,
             clauses: cnf.clauses,
@@ -17,7 +17,7 @@ impl TautoSolver {
         }
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub fn assigns(&self) -> Vec<BoolValue> {
         self.assigns.clone()
     }

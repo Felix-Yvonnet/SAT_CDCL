@@ -5,6 +5,8 @@ mod sat2;
 mod solver;
 mod tautosolver;
 
+use core::panic;
+
 use crate::all_types::*;
 
 fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
@@ -38,35 +40,41 @@ fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
     (flags, files)
 }
 
-fn get_cnfs(files: Vec<String>) -> Vec<CNF> {
-    let mut cnfs: Vec<CNF> = Vec::new();
+fn get_cnfs(files: Vec<String>) -> Vec<Cnf> {
+    let mut cnfs: Vec<Cnf> = Vec::new();
     for file in files {
-        let cnf: crate::CNF = parser::parse_cnf(&file).unwrap();
+        let cnf: crate::Cnf = parser::parse_cnf(&file).unwrap();
         cnfs.push(cnf);
     }
     cnfs
 }
 
-fn quick_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose: bool) {
-    for cnf in cnfs {
+fn quick_solver(mut cnfs: Vec<Cnf>, max_time: Option<std::time::Duration>, _verbose: bool, proof: bool) {
+    for cnf in cnfs.iter_mut() {
         let mut solver = solver::Solver::new(cnf);
         let time_spent = solver.solve(max_time).as_secs_f64();
         if solver.status.is_none() {
             println!("Time duration exceeded");
         } else {
             println!(
-                "Solved in {time_spent} and obtained : {}",
+                "Solved in {time_spent} sec and obtained : {}",
                 if solver.status.unwrap() {
                     "\x1b[32mSAT\x1b[0m"
                 } else {
                     "\x1b[31mUNSAT\x1b[0m"
                 }
             );
+            if proof {
+                let assigns = solver.assigns();
+                if solver.status.unwrap() && !sat_model_check(&cnf.clauses, assigns) {
+                    panic!("Comparing failed");
+                }
+            }
         }
     }
 }
 
-fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, _verbose: bool) {
+fn khorn_solver(cnfs: Vec<Cnf>, _max_time: Option<std::time::Duration>, _verbose: bool) {
     for cnf in cnfs {
         println!("Solving...");
         let mut solver = khorn::KhornSolver::new(cnf);
@@ -83,7 +91,7 @@ fn khorn_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, _verbose
     }
 }
 
-fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose: bool) {
+fn dummy_solver(cnfs: Vec<Cnf>, max_time: Option<std::time::Duration>, _verbose: bool) {
     let mut mean_time = 0.;
     let mut total_count = 0;
     for cnf in cnfs {
@@ -94,7 +102,7 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose:
             println!("Time duration exceeded");
         } else {
             println!(
-                "Solved in {} and obtained : {}",
+                "Solved in {} sec and obtained : {}",
                 time_spent.as_secs_f64(),
                 if is_sat.unwrap() {
                     "\x1b[32mSAT\x1b[0m"
@@ -113,7 +121,7 @@ fn dummy_solver(cnfs: Vec<CNF>, max_time: Option<std::time::Duration>, _verbose:
     )
 }
 
-fn sat2_solver(cnfs: Vec<CNF>, _max_time: Option<std::time::Duration>, _verbose: bool) {
+fn sat2_solver(cnfs: Vec<Cnf>, _max_time: Option<std::time::Duration>, _verbose: bool) {
     for cnf in cnfs {
         let start = std::time::Instant::now();
         let mut solver = sat2::SAT2::new(cnf.clone());
@@ -167,12 +175,20 @@ fn main() {
         time.map(|t| std::time::Duration::from_secs(t.parse::<u64>().ok().unwrap()))
     };
 
-    let verbose = flags.contains(&"-v".to_string()) || flags.contains(&"--verbose".to_string());
+    let mut verbose = false;
+    let mut proof = false;
+    for flag in flags.iter() {
+        if flag == "-v" || flag == "--verbose" {
+            verbose = true;
+        } else if flag == "--proof" {
+            proof = true;
+        }
+    }
 
     let mut has_predefined_solver = false;
     for flag in flags {
         if flag == "--cdcl" {
-            quick_solver(cnfs.clone(), max_time, verbose);
+            quick_solver(cnfs.clone(), max_time, verbose, proof);
             has_predefined_solver = true;
         }
         if flag == "--khorn" {
@@ -199,14 +215,13 @@ fn main() {
             } else if khorn::is_khorn(&cnf) {
                 khorn_solver(vec![cnf], max_time, verbose);
             } else {
-                quick_solver(vec![cnf], max_time, verbose)
+                quick_solver(vec![cnf], max_time, verbose, proof)
             }
         }
     }
 }
 
-#[cfg(test)]
-fn sat_model_check(clauses: &[Vec<Lit>], assigns: &[BoolValue]) -> bool {
+fn sat_model_check(clauses: &[Clause], assigns: &[BoolValue]) -> bool {
     for clause in clauses.iter() {
         let mut satisfied = false;
         for lit in clause {
@@ -263,9 +278,9 @@ mod tests {
             let path_str = entry.path().to_str().unwrap();
 
             if path_str.ends_with(".cnf") {
-                let cnf = parse_cnf(path_str).unwrap();
+                let mut cnf = parse_cnf(path_str).unwrap();
                 let tmp_clauses = cnf.clauses.clone();
-                let mut solver = Solver::new(cnf);
+                let mut solver = Solver::new(&mut cnf);
                 solver.solve(Some(std::time::Duration::from_secs(1)));
                 let status = solver.status;
 
@@ -280,7 +295,7 @@ mod tests {
                             if satisfiable
                                 && !sat_model_check(tmp_clauses.as_slice(), &solver.assigns())
                             {
-                                panic!(
+                                self::panic!(
                                     "Failed in my code T_T cnf: {}, Result: {}{:?}\x1b[0m Expected: {}{:?}\x1b[0m",
                                     path_str, if satisfiable {"\x1b[32m"} else {"\x1b[31m"}, satisfiable, if expected {"\x1b[32m"} else {"\x1b[31m"}, expected
                                 );
@@ -288,7 +303,7 @@ mod tests {
                                 eprintln!("\x1b[32mSuccess\x1b[0m")
                             }
                         } else {
-                            panic!(
+                            self::panic!(
                                 "Mismatch cnf: {}, Result: \x1b[31m{:?}\x1b[0m Expected: \x1b[32m{:?}\x1b[0m",
                                 path_str, satisfiable, expected
                             );
