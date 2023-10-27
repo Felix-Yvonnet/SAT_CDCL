@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-/// Parse the cnf file given as input. 
+/// Parse the cnf file given as input.
 /// The expected format is dimacs but with some changes.
 /// As for dimacs, we require a line containing "p cnf <var number> <clause number>" and each variable are represented by an integer.
 /// But we do not require that the clause ends with a 0, however each clause HAS to be represented in a single line.

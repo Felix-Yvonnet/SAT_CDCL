@@ -1,7 +1,7 @@
 use crate::all_types::*;
 use std::collections::hash_set::HashSet;
 
-/// A solver for Horn formulae. 
+/// A solver for Horn formulae.
 /// A clause is said to be a Horn clause if it contains at most one positive (non negated) literal. A Horn formulae is a conjunction of Horn clauses.
 /// This solver is linear.
 pub struct KhornSolver {
