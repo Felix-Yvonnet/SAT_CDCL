@@ -275,10 +275,10 @@ impl WorkingModel {
         let mut is_undefined = false;
         for clause in &formula.clauses {
             match self.state_clause(clause) {
-            BoolValue::False => return BoolValue::False,
-            BoolValue::Undefined => is_undefined = true,
-            _ => {}
-            } 
+                BoolValue::False => return BoolValue::False,
+                BoolValue::Undefined => is_undefined = true,
+                _ => {}
+            }
         }
         if is_undefined {
             BoolValue::Undefined

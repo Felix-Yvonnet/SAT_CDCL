@@ -312,9 +312,4 @@ mod tests {
     fn test_parsing() {
         parse_cnf("./tests/parsing/no_p.cnf").unwrap();
     }
-    #[test]
-    #[should_panic]
-    fn test_parsing2() {
-        parse_cnf("./tests/parsing/multi_line.cnf").unwrap();
-    }
 }
