@@ -1,5 +1,7 @@
 use crate::*;
 
+/// The simpliest solver one can think of. 
+/// It is exponential and not very efficient but useful for controlling the performance and predictions.
 pub struct TautoSolver {
     n: usize,
     clauses: Vec<Clause>,

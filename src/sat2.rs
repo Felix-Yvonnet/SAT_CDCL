@@ -1,6 +1,9 @@
 use crate::all_types::*;
 use petgraph::graph::DiGraph;
 
+/// A solver for 2SAT formulae. 
+/// A clause is said to be 2 SAT if each clause of the formula contains at most 2 literals.
+/// This solver uses the tarjan algorithm to solve it linearly.
 pub struct SAT2 {
     impl_graph: DiGraph<Lit, ()>,
     pub status: Option<bool>,

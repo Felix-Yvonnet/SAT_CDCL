@@ -1,6 +1,8 @@
 use crate::*;
 use std::time::{Duration, Instant};
-
+/// A CDCL solver. 
+/// Clause Driven Conflict Learning is an algorithm that solves SAT in an amortized exponential time.
+/// The amortized part allows us to be "efficient" on real input, that is to say that we postpone the exponential growth enough to make it usable.
 #[derive(Debug, Default)]
 pub struct Solver {
     // The clauses (initial and added ones)
