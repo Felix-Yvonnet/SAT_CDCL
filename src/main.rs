@@ -274,7 +274,7 @@ mod tests {
                 exit(1);
             }
         };
-        let entries = WalkDir::new(format!("tests/small/{}/", which));
+        let entries = WalkDir::new(format!("tests/small/{which}/"));
         for entry in entries
             .into_iter()
             .filter_map(|e| e.ok())
@@ -298,7 +298,7 @@ mod tests {
                         // let model = Some(self.models.iter().map(|&opt| opt.unwrap()).collect())
                         if satisfiable == expected {
                             if satisfiable
-                                && !sat_model_check(tmp_clauses.as_slice(), &solver.assigns())
+                                && !sat_model_check(tmp_clauses.as_slice(), solver.assigns())
                             {
                                 self::panic!(
                                     "Failed in my code T_T cnf: {}, Result: {}{:?}\x1b[0m Expected: {}{:?}\x1b[0m",
