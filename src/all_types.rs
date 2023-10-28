@@ -207,8 +207,7 @@ impl WorkingModel {
         for lit in conflict {
             stack.push(!*lit)
         }
-        while !stack.is_empty() {
-            let lit = stack.pop().unwrap();
+        while let Some(lit) = stack.pop() {
             if self.impl_graph.0[lit.get_var()].is_empty() && !conflict_clause.contains(&!lit) {
                 conflict_clause.push(!lit)
             } else {

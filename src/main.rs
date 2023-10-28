@@ -49,7 +49,12 @@ fn get_cnfs(files: Vec<String>) -> Vec<Cnf> {
     cnfs
 }
 
-fn quick_solver(mut cnfs: Vec<Cnf>, max_time: Option<std::time::Duration>, _verbose: bool, proof: bool) {
+fn quick_solver(
+    mut cnfs: Vec<Cnf>,
+    max_time: Option<std::time::Duration>,
+    _verbose: bool,
+    proof: bool,
+) {
     for cnf in cnfs.iter_mut() {
         let mut solver = solver::Solver::new(cnf);
         let time_spent = solver.solve(max_time).as_secs_f64();
