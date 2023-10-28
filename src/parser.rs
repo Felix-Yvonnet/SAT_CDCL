@@ -11,12 +11,14 @@ use std::io::BufRead;
 /// -1 -2 0
 /// 1 0
 /// ```
-pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::Cnf> {
+pub fn parse_cnf(path: &str, verbose: bool) -> std::io::Result<crate::all_types::Cnf> {
     let input = match std::fs::File::open(path) {
         Err(e) => panic!("Impossible to open file: {e}"),
         Ok(f) => f,
     };
-    println!("Reading file: {path}");
+    if verbose {
+        println!("Reading file: {path}")
+    }
     let reader = std::io::BufReader::new(input);
     let mut var_num = 0;
     let mut cl_num = 0;

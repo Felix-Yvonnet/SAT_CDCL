@@ -7,16 +7,16 @@ use std::collections::hash_set::HashSet;
 pub struct KhornSolver {
     num_var: usize,
     num_clauses: usize,
-    clauses: CAllClauses,
+    formula: CAllClauses,
     status: Option<bool>,
     assigned_pos: HashSet<Var>,
+    assigns: Vec<BoolValue>,
 }
-
-impl KhornSolver {
-    pub fn new(mut clauses: Cnf) -> Self {
+impl Solver for KhornSolver {
+    fn new(mut formula: Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
-        for clause in clauses.iter() {
+        for clause in formula.iter() {
             if clause.is_empty() {
                 status = Some(false)
             } else {
@@ -27,34 +27,38 @@ impl KhornSolver {
             }
         }
         KhornSolver {
-            num_var: clauses.var_num,
-            num_clauses: clauses.cl_num,
+            num_var: formula.var_num,
+            num_clauses: formula.cl_num,
             status,
-            clauses: CAllClauses::new(new_clauses),
+            formula: CAllClauses::new(new_clauses),
             assigned_pos: HashSet::new(),
+            assigns: vec![BoolValue::False; formula.var_num],
         }
     }
 
-    pub fn solve(&mut self) -> (bool, std::time::Duration) {
-        let start = std::time::Instant::now();
+    fn solve(&mut self) -> bool {
         if let Some(status) = self.status {
-            (status, start.elapsed())
+            status
         } else {
-            (self.linear_solve(), start.elapsed())
+            self.linear_solve()
         }
     }
 
+    fn assigns(&mut self) -> &Vec<BoolValue> {
+        for var in self.assigned_pos.iter() {
+            self.assigns[*var] = BoolValue::True;
+        }
+        &self.assigns
+    }
+}
+impl KhornSolver {
     fn linear_solve(&mut self) -> bool {
-        // ind(clause) = self.clauses.clauses.position(clause)
+        // ind(clause) = self.formula.clauses.position(clause)
         let mut score: Vec<u32> = vec![0; self.num_clauses]; // ind(clause) -> score
         let mut clauses_with_negvar: Vec<HashSet<u32>> = vec![HashSet::new(); self.num_var]; // var -> list[ind(clause)]
-        assert!(self.clauses.clauses.len() == self.num_clauses);
-        for (k, scorek) in score
-            .iter_mut()
-            .enumerate()
-            .take(self.clauses.clauses.len())
-        {
-            for lit in self.clauses.clauses[k].iter() {
+        assert!(self.formula.clauses.len() == self.num_clauses);
+        for (k, scorek) in score.iter_mut().enumerate() {
+            for lit in self.formula.clauses[k].iter() {
                 *scorek += lit.is_neg() as u32;
                 if lit.is_neg() {
                     clauses_with_negvar[lit.get_var()].insert(k as u32);
@@ -67,10 +71,9 @@ impl KhornSolver {
             pool[score[k] as usize].insert(k as u32);
         }
 
-        while !pool[0].is_empty() {
-            let curr = *pool[0].iter().next().unwrap();
+        while let Some(&curr) = pool[0].iter().next() {
             pool[0].remove(&curr);
-            let curr_clause = &self.clauses.clauses[curr as usize];
+            let curr_clause = &self.formula.clauses[curr as usize];
             let opt_v = curr_clause.pos;
             if opt_v.is_none() {
                 return false;
@@ -87,15 +90,6 @@ impl KhornSolver {
             }
         }
         true
-    }
-
-    #[allow(dead_code)]
-    pub fn assigns(&self) -> Vec<BoolValue> {
-        let mut assigns = vec![BoolValue::False; self.num_var];
-        for var in self.assigned_pos.iter() {
-            assigns[*var] = BoolValue::True;
-        }
-        assigns
     }
 }
 

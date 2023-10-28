@@ -65,6 +65,7 @@ impl SAT2 {
             for node_lit in scc {
                 let lit = self.impl_graph[node_lit];
                 if all_literals.contains(&!lit) {
+                    self.status = Some(false);
                     return false;
                 }
                 all_literals.insert(lit);
@@ -73,7 +74,17 @@ impl SAT2 {
                 }
             }
         }
+        self.status = Some(true);
         true
+    }
+    pub fn assigns(&mut self) -> &Vec<BoolValue> {
+        debug_assert!(self.status == Some(true));
+        for eval in self.assigns.iter_mut() {
+            if *eval == BoolValue::Undefined {
+                *eval = BoolValue::False
+            }
+        }
+        &self.assigns
     }
 }
 

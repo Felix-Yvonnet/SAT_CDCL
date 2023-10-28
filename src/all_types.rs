@@ -314,3 +314,9 @@ impl WorkingModel {
         }
     }
 }
+
+pub trait Solver {
+    fn new(formula: Cnf) -> Self;
+    fn solve(&mut self) -> bool;
+    fn assigns(&mut self) -> &Vec<BoolValue>;
+}
