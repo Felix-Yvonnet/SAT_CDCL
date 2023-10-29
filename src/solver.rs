@@ -15,7 +15,6 @@ pub struct CdclSolver {
     level: usize,
 }
 
-
 impl<'a> Solver<'a> for CdclSolver {
     fn new<'b: 'a>(clauses: &Cnf) -> Self {
         let n = clauses.var_num;
@@ -41,15 +40,13 @@ impl<'a> Solver<'a> for CdclSolver {
         }
         self.cdcl()
     }
-    
+
     fn assigns(&mut self) -> &Vec<BoolValue> {
         self.working_model.get_assigned()
     }
 }
 
 impl CdclSolver {
-
-
     pub fn add_clause(&mut self, clause: Clause) -> bool {
         if clause.len() == 1 {
             let lit = clause[0];
@@ -156,5 +153,4 @@ impl CdclSolver {
         self.level = level;
         self.working_model.backtracking(level);
     }
-
 }

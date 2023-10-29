@@ -56,7 +56,7 @@ function launchSatisfiableTest()
                 displayWrong
             fi
 
-        elif [[ ${RESULT} = false ]]; then
+        elif [[ ${RESULT:2} = UNSATISFIABLE* ]]; then
             echo $FILEPATH >> $FILE_WRONG
             displayWrongResult
         else

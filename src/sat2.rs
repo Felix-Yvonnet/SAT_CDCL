@@ -89,7 +89,6 @@ impl<'a> Solver<'a> for SAT2 {
     }
 }
 
-
 pub fn is_2sat(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {
         if clause.len() > 2 {

@@ -8,11 +8,11 @@ pub struct TautoSolver<'a> {
     pub assigns: Vec<BoolValue>,
 }
 
-
 impl<'a> Solver<'a> for TautoSolver<'a> {
-    
-    fn new<'b>(cnf: &'b Cnf) -> TautoSolver<'a> 
-    where 'b: 'a {
+    fn new<'b>(cnf: &'b Cnf) -> TautoSolver<'a>
+    where
+        'b: 'a,
+    {
         TautoSolver {
             n: cnf.var_num,
             clauses: &cnf.clauses,

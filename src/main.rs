@@ -48,7 +48,6 @@ fn get_cnfs(files: Vec<String>, verbose: bool) -> Vec<Cnf> {
     cnfs
 }
 
-
 fn help() {
     println!("This function imlements different SAT solvers.");
     println!("To use it, you may write `sat_solver [args] file(s)`");
@@ -94,7 +93,6 @@ fn print_proof(proof: bool, assigns: &[BoolValue], formula: &[Clause], verbose: 
     }
 }
 
-
 fn sat_model_check(clauses: &[Clause], assigns: &[BoolValue]) -> bool {
     for clause in clauses.iter() {
         let mut satisfied = false;
@@ -122,10 +120,7 @@ fn sat_model_check(clauses: &[Clause], assigns: &[BoolValue]) -> bool {
     true
 }
 
-
-
 fn apply_solver<'a>(solver: &mut impl Solver<'a>, cnf: &Cnf, verbose: bool, proof: bool) {
-
     let start = std::time::Instant::now();
     let is_sat = solver.solve();
     print_status(is_sat);
@@ -168,7 +163,6 @@ fn main() {
                 println!("\x1b[31mNot a Horn\x1b[0m configuration but go on")
             }
             solver_type.push("khorn");
-
         } else if flag == "--dummy" {
             solver_type.push("dummy");
         } else if flag == "--2sat" {
@@ -178,10 +172,10 @@ fn main() {
 
     for cnf in cnfs.iter_mut() {
         if solver_type.is_empty() {
-            if sat2::is_2sat(&cnf) {
+            if sat2::is_2sat(cnf) {
                 let mut solver = sat2::SAT2::new(cnf);
                 apply_solver(&mut solver, cnf, verbose, proof)
-            } else if khorn::is_khorn(&cnf) {
+            } else if khorn::is_khorn(cnf) {
                 let mut solver = khorn::KhornSolver::new(cnf);
                 apply_solver(&mut solver, cnf, verbose, proof)
             } else {
@@ -192,8 +186,8 @@ fn main() {
             for &solver_name in solver_type.iter() {
                 match solver_name {
                     "cdcl" => {
-                    let mut solver = solver::CdclSolver::new(cnf);
-                    apply_solver(&mut solver, cnf, verbose, proof)
+                        let mut solver = solver::CdclSolver::new(cnf);
+                        apply_solver(&mut solver, cnf, verbose, proof)
                     }
                     "2sat" => {
                         let mut solver = sat2::SAT2::new(cnf);
@@ -207,7 +201,7 @@ fn main() {
                         let mut solver = tautosolver::TautoSolver::new(cnf);
                         apply_solver(&mut solver, cnf, verbose, proof)
                     }
-                    _ => panic!("Weird name")
+                    _ => panic!("Weird name"),
                 }
             }
         }
@@ -244,9 +238,9 @@ mod tests {
             let path_str = entry.path().to_str().unwrap();
 
             if path_str.ends_with(".cnf") {
-                let mut cnf = parse_cnf(path_str, false).unwrap();
+                let cnf = parse_cnf(path_str, false).unwrap();
                 let tmp_clauses = cnf.clauses.clone();
-                let mut solver = CdclSolver::new(&mut cnf);
+                let mut solver = CdclSolver::new(&cnf);
                 let status = solver.solve();
 
                 if status == expected {

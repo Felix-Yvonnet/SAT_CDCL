@@ -13,18 +13,16 @@ pub struct KhornSolver<'a> {
     assigns: Vec<BoolValue>,
 }
 impl<'a> Solver<'a> for KhornSolver<'a> {
-    fn new<'b:'a>(formula: &'b Cnf) -> Self {
+    fn new<'b: 'a>(formula: &'b Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
         for clause in formula.clauses.iter() {
             if clause.is_empty() {
                 status = Some(false)
             } else {
-                new_clauses.push(
-                    CClause::new(clause, 
-                        {
-                        let ind = clause.iter().position(|lit| lit.is_pos());
-                        ind.map(|i| clause[i].get_var())
+                new_clauses.push(CClause::new(clause, {
+                    let ind = clause.iter().position(|lit| lit.is_pos());
+                    ind.map(|i| clause[i].get_var())
                 }));
             }
         }

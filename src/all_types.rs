@@ -81,7 +81,7 @@ pub struct CClause<'a> {
 }
 
 impl<'a> CClause<'a> {
-    pub fn new<'b:'a>(clause: &'b Vec<Lit>, pos: Option<Var>) -> Self {
+    pub fn new<'b: 'a>(clause: &'b Vec<Lit>, pos: Option<Var>) -> Self {
         CClause { clause, pos }
     }
     pub fn iter(&self) -> impl Iterator<Item = &Lit> {
@@ -153,7 +153,6 @@ impl std::ops::Not for BoolValue {
 /// If p in impl_graph[q] then p goes to q in the implication graph
 pub struct ImplGraph(Vec<Vec<Lit>>);
 
-
 #[derive(Debug)]
 pub struct WorkingModel {
     // The working assignment of the model
@@ -198,7 +197,7 @@ impl WorkingModel {
         // backtracking the implication graph to find the sources of the conflict
         // creates the conflict clause
         let mut stack = Vec::new();
-        
+
         let mut conflict_clause = Vec::new();
         for lit in conflict {
             stack.push(!*lit)
@@ -310,7 +309,6 @@ impl WorkingModel {
         }
     }
 }
-
 
 pub trait Solver<'a> {
     fn new<'b: 'a>(cnf: &'b Cnf) -> Self;

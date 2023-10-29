@@ -62,10 +62,10 @@ pub fn parse_cnf(path: &str, verbose: bool) -> std::io::Result<crate::all_types:
             .take_while(|x| *x != 0)
             .collect();
 
-        clause_count+=1;
+        clause_count += 1;
         if values.is_empty() {
             // empty clause
-            continue
+            continue;
         }
         let clause: Vec<crate::all_types::Lit> = values
             .iter()
