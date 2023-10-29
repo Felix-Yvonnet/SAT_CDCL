@@ -70,7 +70,7 @@ pub fn parse_cnf(path: &str, verbose: bool) -> std::io::Result<crate::all_types:
         let clause: Vec<crate::all_types::Lit> = values
             .iter()
             .map(|&x| {
-                var_count = var_count.max(x.abs() as usize);
+                var_count = var_count.max(x.unsigned_abs() as usize);
                 crate::all_types::Lit::from(x)
             })
             .collect();

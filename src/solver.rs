@@ -16,8 +16,8 @@ pub struct CdclSolver {
 }
 
 
-impl CdclSolver {
-    pub fn new(clauses: &Cnf) -> Self {
+impl<'a> Solver<'a> for CdclSolver {
+    fn new<'b: 'a>(clauses: &Cnf) -> Self {
         let n = clauses.var_num;
         let mut solver = CdclSolver {
             clauses: AllClauses { clauses: vec![] },
@@ -34,6 +34,21 @@ impl CdclSolver {
         });
         solver
     }
+
+    fn solve(&mut self) -> bool {
+        if let Some(status) = self.status {
+            return status;
+        }
+        self.cdcl()
+    }
+    
+    fn assigns(&mut self) -> &Vec<BoolValue> {
+        self.working_model.get_assigned()
+    }
+}
+
+impl CdclSolver {
+
 
     pub fn add_clause(&mut self, clause: Clause) -> bool {
         if clause.len() == 1 {
@@ -81,13 +96,6 @@ impl CdclSolver {
         }
         self.status = Some(true);
         true
-    }
-
-    pub fn solve(&mut self) -> bool {
-        if let Some(status) = self.status {
-            return status;
-        }
-        self.cdcl()
     }
 
     /// Implement the decision phase of CDCL
@@ -149,7 +157,4 @@ impl CdclSolver {
         self.working_model.backtracking(level);
     }
 
-    pub fn assigns(&self) -> &Vec<BoolValue> {
-        self.working_model.get_assigned()
-    }
 }

@@ -10,8 +10,8 @@ pub struct SAT2 {
     pub assigns: Vec<BoolValue>,
 }
 
-impl SAT2 {
-    pub fn new(cnf: &Cnf) -> SAT2 {
+impl<'a> Solver<'a> for SAT2 {
+    fn new<'b: 'a>(cnf: &Cnf) -> SAT2 {
         if cnf.clauses.is_empty() {
             return SAT2 {
                 impl_graph: DiGraph::new(),
@@ -55,7 +55,7 @@ impl SAT2 {
         }
     }
 
-    pub fn solve(&mut self) -> bool {
+    fn solve(&mut self) -> bool {
         if let Some(status) = self.status {
             return status;
         };
@@ -77,7 +77,8 @@ impl SAT2 {
         self.status = Some(true);
         true
     }
-    pub fn assigns(&mut self) -> &Vec<BoolValue> {
+
+    fn assigns(&mut self) -> &Vec<BoolValue> {
         debug_assert!(self.status == Some(true));
         for eval in self.assigns.iter_mut() {
             if *eval == BoolValue::Undefined {
@@ -87,6 +88,7 @@ impl SAT2 {
         &self.assigns
     }
 }
+
 
 pub fn is_2sat(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {

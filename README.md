@@ -27,8 +27,8 @@ This progam implements different SAT solvers. To use it, one may write `sat_solv
 --khorn       Using the Horn solver
 --2sat        Using the 2sat solver
 --dummy       Using the naive solver
---proof       Test whether the returned assigments are correct (the ouput model indeed satisfies the problem)
--v --verbose  Print the model and different informations. The problem may take a bit more time doing more verifications.
+--proof       Show the obtained model if the problem is satisfied
+-v --verbose  Display precise information. It may takes a bit more time doing more verifications.
 
 ### Example
 To solve the files `tests/sat/horn1.cnf` and `tests/unsat/tseitin5.cnf` one can type the following command :
