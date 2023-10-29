@@ -13,7 +13,7 @@ FILE_FAIL=$(mktemp)
 TOTAL=0
 
 TIMEOUT=${1:-30}
-CMD="timeout ${TIMEOUT} ./sat_solver --proof"
+CMD="timeout ${TIMEOUT} ./sat_solver --proof --verbose"
 CMD_PROOF="picosat"
 
 JOBS=${2:-4}
@@ -33,7 +33,7 @@ function launchSatisfiableTest()
     ECODE=$?
 
     echo -n "${FILEPATH}... "
-    if [[ ${SANITY:2} = SATISFIABLE* ]]; then
+    if [[ ${SANITY:2} == SATISFIABLE* ]]; then
         echo "Sanity check passed"
     else
         tput setaf 1; echo "Sanity check failed!"; tput setaf 7
@@ -44,23 +44,21 @@ function launchSatisfiableTest()
         echo $FILEPATH >> $FILE_TIMEOUT
         displayTimeout
     else
-        if [[ ${RESULT:2} = SATISFIABLE* ]]; then
+        if [[ -n $(echo ${result[4]} | grep "UNSATISFIABLE") ]]; then
+            echo $FILEPATH >> $FILE_WRONG
+            displayWrongResult
+        elif [[ -n $(echo ${RESULT} | grep "SATISFIABLE") ]]; then
             local PROOF=$(echo " ${RESULT:6}" | tr '\n' ' ' | sed 's/ / -a /g')
             local CHECK=$(${CMD_PROOF} "${FILEPATH}" ${PROOF:1:-4})
 
-            if [[ ${CHECK:2} = SATISFIABLE* ]]; then
-                echo $FILEPATH >> $FILE_PASS
-                displaySuccess
-            else
+            if [[ -n $(echo ${RESULT} | grep ERROR) ]]; then
                 echo $FILEPATH >> $FILE_WRONG
                 displayWrong
+            else
+                echo $FILEPATH >> $FILE_PASS
+                displaySuccess
             fi
-
-        elif [[ ${RESULT:2} = UNSATISFIABLE* ]]; then
-            echo $FILEPATH >> $FILE_WRONG
-            displayWrongResult
         else
-            echo ${RESULT:2:-4}
             echo $FILEPATH >> $FILE_FAIL
             displayFail
         fi
@@ -88,12 +86,12 @@ function launchUnsatisfiableTest()
         echo $FILEPATH >> $FILE_TIMEOUT
         displayTimeout
     else
-        if [[ ${RESULT} = true* ]]; then
-            echo $FILEPATH >> $FILE_WRONG
-            displayWrongResult
-        elif [[ ${RESULT} = false ]]; then
+        if [[ -n $(echo ${result[4]} | grep "UNSATISFIABLE") ]]; then
             echo $FILEPATH >> $FILE_PASS
             displaySuccess
+        elif [[ -n $(echo ${result[4]} | grep "SATISFIABLE") ]]; then
+            echo $FILEPATH >> $FILE_WRONG
+            displayWrongResult
         else
             echo $FILEPATH >> $FILE_FAIL
             displayFail
