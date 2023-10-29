@@ -12,7 +12,7 @@ pub struct KhornSolver<'a> {
     assigned_pos: HashSet<Var>,
     assigns: Vec<BoolValue>,
 }
-impl<'a> Solver<'a> for KhornSolver<'a> {
+impl<'a> crate::solver::Solver<'a> for KhornSolver<'a> {
     fn new<'b: 'a>(formula: &'b Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];

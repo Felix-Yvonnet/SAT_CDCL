@@ -10,7 +10,7 @@ pub struct SAT2 {
     pub assigns: Vec<BoolValue>,
 }
 
-impl<'a> Solver<'a> for SAT2 {
+impl<'a> crate::solver::Solver<'a> for SAT2 {
     fn new<'b: 'a>(cnf: &Cnf) -> SAT2 {
         if cnf.clauses.is_empty() {
             return SAT2 {

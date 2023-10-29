@@ -44,13 +44,10 @@ function launchSatisfiableTest()
         echo $FILEPATH >> $FILE_TIMEOUT
         displayTimeout
     else
-        if [[ -n $(echo ${result[4]} | grep "UNSATISFIABLE") ]]; then
+        if [[ -n $(echo ${RESULT} | grep "UNSATISFIABLE") ]]; then
             echo $FILEPATH >> $FILE_WRONG
             displayWrongResult
         elif [[ -n $(echo ${RESULT} | grep "SATISFIABLE") ]]; then
-            local PROOF=$(echo " ${RESULT:6}" | tr '\n' ' ' | sed 's/ / -a /g')
-            local CHECK=$(${CMD_PROOF} "${FILEPATH}" ${PROOF:1:-4})
-
             if [[ -n $(echo ${RESULT} | grep ERROR) ]]; then
                 echo $FILEPATH >> $FILE_WRONG
                 displayWrong
@@ -86,10 +83,10 @@ function launchUnsatisfiableTest()
         echo $FILEPATH >> $FILE_TIMEOUT
         displayTimeout
     else
-        if [[ -n $(echo ${result[4]} | grep "UNSATISFIABLE") ]]; then
+        if [[ -n $(echo ${RESULT} | grep "UNSATISFIABLE") ]]; then
             echo $FILEPATH >> $FILE_PASS
             displaySuccess
-        elif [[ -n $(echo ${result[4]} | grep "SATISFIABLE") ]]; then
+        elif [[ -n $(echo ${RESULT} | grep "SATISFIABLE") ]]; then
             echo $FILEPATH >> $FILE_WRONG
             displayWrongResult
         else

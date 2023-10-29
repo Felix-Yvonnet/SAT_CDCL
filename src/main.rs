@@ -3,10 +3,12 @@ mod khorn;
 mod parser;
 mod sat2;
 mod solver;
+mod cdcl;
 mod tautosolver;
 use core::panic;
 
 use crate::all_types::*;
+use crate::solver::*;
 
 fn get_args(args: Vec<String>) -> (Vec<String>, Vec<String>) {
     let mut flags = vec![];
@@ -179,14 +181,14 @@ fn main() {
                 let mut solver = khorn::KhornSolver::new(cnf);
                 apply_solver(&mut solver, cnf, verbose, proof)
             } else {
-                let mut solver = solver::CdclSolver::new(cnf);
+                let mut solver = cdcl::CdclSolver::new(cnf);
                 apply_solver(&mut solver, cnf, verbose, proof)
             }
         } else {
             for &solver_name in solver_type.iter() {
                 match solver_name {
                     "cdcl" => {
-                        let mut solver = solver::CdclSolver::new(cnf);
+                        let mut solver = cdcl::CdclSolver::new(cnf);
                         apply_solver(&mut solver, cnf, verbose, proof)
                     }
                     "2sat" => {
@@ -216,7 +218,7 @@ mod tests {
     use super::*;
 
     use super::parser::*;
-    use super::solver::CdclSolver;
+    use cdcl::CdclSolver;
 
     use walkdir::WalkDir;
 
