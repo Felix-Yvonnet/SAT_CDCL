@@ -44,7 +44,7 @@ function launchSatisfiableTest()
         echo $FILEPATH >> $FILE_TIMEOUT
         displayTimeout
     else
-        if [[ ${RESULT} = true* ]]; then
+        if [[ ${RESULT:2} = SATISFIABLE* ]]; then
             local PROOF=$(echo " ${RESULT:6}" | tr '\n' ' ' | sed 's/ / -a /g')
             local CHECK=$(${CMD_PROOF} "${FILEPATH}" ${PROOF:1:-4})
 

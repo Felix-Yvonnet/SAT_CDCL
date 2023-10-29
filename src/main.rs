@@ -54,20 +54,20 @@ fn quick_solver(mut cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
         let mut solver = solver::CdclSolver::new(cnf);
         let is_sat = solver.solve();
         print_status(is_sat);
-        print_proof(proof, solver.assigns());
+        print_proof(proof, solver.assigns(), &cnf.clauses);
         if verbose {
             println!("Solved in {} seconds", start.elapsed().as_secs_f64())
         }
     }
 }
 
-fn khorn_solver(cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
-    for cnf in cnfs {
+fn khorn_solver(mut cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
+    for cnf in cnfs.iter_mut() {
         let start = std::time::Instant::now();
         let mut solver = khorn::KhornSolver::new(cnf);
         let is_sat = solver.solve();
         print_status(is_sat);
-        print_proof(proof, solver.assigns());
+        print_proof(proof, solver.assigns(), &cnf.clauses);
         if verbose {
             println!("Solved in {} seconds", start.elapsed().as_secs_f64())
         }
@@ -77,10 +77,10 @@ fn khorn_solver(cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
 fn dummy_solver(cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
     for cnf in cnfs {
         let start = std::time::Instant::now();
-        let mut solver = tautosolver::TautoSolver::new(cnf);
+        let mut solver = tautosolver::TautoSolver::new(&cnf);
         let is_sat = solver.solve();
         print_status(is_sat);
-        print_proof(proof, solver.assigns());
+        print_proof(proof, solver.assigns(), &cnf.clauses);
         if verbose {
             println!("Solved in {} seconds", start.elapsed().as_secs_f64())
         }
@@ -94,25 +94,27 @@ fn print_status(is_sat: bool) {
         println!("s \x1b[32mUNSATISFIABLE\x1b[0m")
     }
 }
-fn print_proof(proof: bool, assigns: &[BoolValue]) {
+fn print_proof(proof: bool, assigns: &[BoolValue], formula: &[Clause]) {
     if proof {
+        sat_model_check(formula, assigns);
+        print!("v ");
         for (var, eval) in assigns.iter().enumerate() {
             if *eval == BoolValue::False {
                 print!("-")
             }
-            print!("{}", var + 1)
+            print!("{} ", var + 1)
         }
         println!()
     }
-}
+} 
 
 fn sat2_solver(cnfs: Vec<Cnf>, verbose: bool, proof: bool) {
     for cnf in cnfs {
         let start = std::time::Instant::now();
-        let mut solver = sat2::SAT2::new(cnf);
+        let mut solver = sat2::SAT2::new(&cnf);
         let is_sat = solver.solve();
         print_status(is_sat);
-        print_proof(proof, solver.assigns());
+        print_proof(proof, solver.assigns(), &cnf.clauses);
         if verbose {
             println!("Solved in {} seconds", start.elapsed().as_secs_f64())
         }
@@ -129,8 +131,8 @@ fn help() {
     println!("--khorn       Using the Khorn solver");
     println!("--dummy       Using the dummy solver");
     println!("--2sat        Using the 2sat solver");
+    println!("--proof       Test whether the returned assigments are correct (the ouput model indeed satisfies the problem)");
     println!("-v --verbose  Print the model and different informations");
-    println!("-t --time     Limit the maximum time (in seconds) to spend searching");
     println!("For example `./sat_solver --cdcl tests/sat/horn1.cnf tests/unsat/php6-4.cnf` will returns :");
     println!("SAT\nUNSAT");
 }

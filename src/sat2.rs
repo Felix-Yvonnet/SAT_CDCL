@@ -11,7 +11,7 @@ pub struct SAT2 {
 }
 
 impl SAT2 {
-    pub fn new(cnf: Cnf) -> SAT2 {
+    pub fn new(cnf: &Cnf) -> SAT2 {
         if cnf.clauses.is_empty() {
             return SAT2 {
                 impl_graph: DiGraph::new(),
@@ -28,7 +28,7 @@ impl SAT2 {
         let mut impl_graph = DiGraph::new();
         let mut all_lits: Vec<Option<petgraph::stable_graph::NodeIndex>> =
             vec![None; 2 * cnf.var_num];
-        for clause in cnf.clauses {
+        for clause in cnf.clauses.iter() {
             let lit1 = clause[0];
             let lit2 = clause[1];
             if all_lits[lit1].is_none() {

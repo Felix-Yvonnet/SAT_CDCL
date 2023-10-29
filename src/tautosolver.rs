@@ -2,30 +2,34 @@ use crate::*;
 
 /// The simpliest solver one can think of.
 /// It is exponential and not very efficient but useful for controlling the performance and predictions.
-pub struct TautoSolver {
+pub struct TautoSolver<'a> {
     n: usize,
-    clauses: Vec<Clause>,
+    clauses: &'a Vec<Clause>,
     pub assigns: Vec<BoolValue>,
 }
 
-impl TautoSolver {
-    pub fn new(cnf: Cnf) -> TautoSolver {
+
+impl<'a> Solver<'a> for TautoSolver<'a> {
+    
+    fn new<'b>(cnf: &'b Cnf) -> TautoSolver<'a> 
+    where 'b: 'a {
         TautoSolver {
             n: cnf.var_num,
-            clauses: cnf.clauses,
+            clauses: &cnf.clauses,
             assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
 
-    #[allow(dead_code)]
-    pub fn assigns(&self) -> &Vec<BoolValue> {
+    fn assigns(&mut self) -> &Vec<BoolValue> {
         &self.assigns
     }
 
-    pub fn solve(&mut self) -> bool {
+    fn solve(&mut self) -> bool {
         self.ssolve(0)
     }
+}
 
+impl<'a> TautoSolver<'a> {
     fn eval(&self) -> bool {
         for clause in self.clauses.iter() {
             let mut satisfied = false;

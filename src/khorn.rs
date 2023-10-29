@@ -4,25 +4,27 @@ use std::collections::hash_set::HashSet;
 /// A solver for Horn formulae.
 /// A clause is said to be a Horn clause if it contains at most one positive (non negated) literal. A Horn formulae is a conjunction of Horn clauses.
 /// This solver is linear.
-pub struct KhornSolver {
+pub struct KhornSolver<'a> {
     num_var: usize,
     num_clauses: usize,
-    formula: CAllClauses,
+    formula: CAllClauses<'a>,
     status: Option<bool>,
     assigned_pos: HashSet<Var>,
     assigns: Vec<BoolValue>,
 }
-impl Solver for KhornSolver {
-    fn new(mut formula: Cnf) -> Self {
+impl<'a> Solver<'a> for KhornSolver<'a> {
+    fn new<'b:'a>(formula: &'b Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
-        for clause in formula.iter() {
+        for clause in formula.clauses.iter() {
             if clause.is_empty() {
                 status = Some(false)
             } else {
-                new_clauses.push(CClause::new(clause.clone(), {
-                    let ind = clause.iter().position(|lit| lit.is_pos());
-                    ind.map(|i| clause[i].get_var())
+                new_clauses.push(
+                    CClause::new(clause, 
+                        {
+                        let ind = clause.iter().position(|lit| lit.is_pos());
+                        ind.map(|i| clause[i].get_var())
                 }));
             }
         }
@@ -51,7 +53,7 @@ impl Solver for KhornSolver {
         &self.assigns
     }
 }
-impl KhornSolver {
+impl<'a> KhornSolver<'a> {
     fn linear_solve(&mut self) -> bool {
         // ind(clause) = self.formula.clauses.position(clause)
         let mut score: Vec<u32> = vec![0; self.num_clauses]; // ind(clause) -> score

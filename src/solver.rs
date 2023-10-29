@@ -1,8 +1,9 @@
 use crate::*;
+
 /// A CDCL solver.
 /// Clause Driven Conflict Learning is an algorithm that solves SAT in an amortized exponential time.
 /// The amortized part allows us to be "efficient" on real input, that is to say that we postpone the exponential growth enough to make it usable.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CdclSolver {
     // The clauses (initial and added ones)
     clauses: AllClauses,
@@ -14,8 +15,9 @@ pub struct CdclSolver {
     level: usize,
 }
 
+
 impl CdclSolver {
-    pub fn new(clauses: &mut Cnf) -> Self {
+    pub fn new(clauses: &Cnf) -> Self {
         let n = clauses.var_num;
         let mut solver = CdclSolver {
             clauses: AllClauses { clauses: vec![] },
@@ -23,7 +25,7 @@ impl CdclSolver {
             status: None,
             level: 0,
         };
-        clauses.iter().for_each(|clause| {
+        clauses.clauses.iter().for_each(|clause| {
             if clause.is_empty() {
                 solver.status = Some(false);
             } else {
