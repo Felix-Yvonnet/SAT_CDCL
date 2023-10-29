@@ -1,4 +1,4 @@
-use crate::all_types::*;
+use crate::{all_types::*, solver::Solver};
 use std::collections::hash_set::HashSet;
 
 /// A solver for Horn formulae.
@@ -12,8 +12,8 @@ pub struct KhornSolver {
     assigned_pos: HashSet<Var>,
 }
 
-impl KhornSolver {
-    pub fn new(mut clauses: Cnf) -> Self {
+impl Solver for KhornSolver {
+    fn new(clauses : &mut Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
         for clause in clauses.iter() {
@@ -35,15 +35,25 @@ impl KhornSolver {
         }
     }
 
-    pub fn solve(&mut self) -> (bool, std::time::Duration) {
+    fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
         let start = std::time::Instant::now();
-        if let Some(status) = self.status {
-            (status, start.elapsed())
+        if self.status.is_some() {
+            (self.status, start.elapsed())
         } else {
-            (self.linear_solve(), start.elapsed())
+            (Some(self.linear_solve()), start.elapsed())
         }
     }
+    #[allow(dead_code)]
+    fn assigns(&self) -> &Vec<BoolValue> {
+        let mut assigns = vec![BoolValue::False; self.num_var];
+        for var in self.assigned_pos.iter() {
+            assigns[*var] = BoolValue::True;
+        }
+        &assigns
+    }
+}
 
+impl KhornSolver {
     fn linear_solve(&mut self) -> bool {
         // ind(clause) = self.clauses.clauses.position(clause)
         let mut score: Vec<u32> = vec![0; self.num_clauses]; // ind(clause) -> score
@@ -87,15 +97,6 @@ impl KhornSolver {
             }
         }
         true
-    }
-
-    #[allow(dead_code)]
-    pub fn assigns(&self) -> Vec<BoolValue> {
-        let mut assigns = vec![BoolValue::False; self.num_var];
-        for var in self.assigned_pos.iter() {
-            assigns[*var] = BoolValue::True;
-        }
-        assigns
     }
 }
 

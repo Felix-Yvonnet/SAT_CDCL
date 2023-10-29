@@ -1,25 +1,25 @@
-use crate::all_types::*;
+use crate::{all_types::*, solver::Solver};
 use petgraph::graph::DiGraph;
 
 /// A solver for 2SAT formulae.
 /// A clause is said to be 2 SAT if each clause of the formula contains at most 2 literals.
 /// This solver uses the tarjan algorithm to solve it linearly.
-pub struct SAT2 {
+pub struct SAT2Solver {
     impl_graph: DiGraph<Lit, ()>,
     pub status: Option<bool>,
     pub assigns: Vec<BoolValue>,
 }
 
-impl SAT2 {
-    pub fn new(cnf: Cnf) -> SAT2 {
+impl Solver for SAT2Solver {
+    fn new(cnf: &mut Cnf) -> SAT2Solver {
         if cnf.clauses.is_empty() {
-            return SAT2 {
+            return SAT2Solver {
                 impl_graph: DiGraph::new(),
                 status: Some(true),
                 assigns: vec![],
             };
         } else if cnf.clauses[0].is_empty() {
-            return SAT2 {
+            return SAT2Solver {
                 impl_graph: DiGraph::new(),
                 status: Some(false),
                 assigns: vec![],
@@ -48,16 +48,20 @@ impl SAT2 {
             impl_graph.add_edge(all_lits[!lit1].unwrap(), all_lits[lit2].unwrap(), ());
         }
 
-        SAT2 {
+        SAT2Solver {
             impl_graph,
             status: None,
             assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
+    fn assigns(&self) -> &Vec<BoolValue> {
+        panic!("not implemented for SAT2Solver")
+    }
+    fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
+        let start = std::time::Instant::now();
 
-    pub fn solve(&mut self) -> bool {
-        if let Some(status) = self.status {
-            return status;
+        if self.status.is_some() {
+            return (self.status, start.elapsed());
         };
         let sccs = petgraph::algo::tarjan_scc(&self.impl_graph);
         for scc in sccs {
@@ -65,7 +69,7 @@ impl SAT2 {
             for node_lit in scc {
                 let lit = self.impl_graph[node_lit];
                 if all_literals.contains(&!lit) {
-                    return false;
+                    return (Some(false), start.elapsed());
                 }
                 all_literals.insert(lit);
                 if self.assigns[lit.get_var()] == BoolValue::Undefined {
@@ -73,9 +77,10 @@ impl SAT2 {
                 }
             }
         }
-        true
+        (Some(true), start.elapsed())
     }
 }
+
 
 pub fn is_2sat(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {

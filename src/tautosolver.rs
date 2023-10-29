@@ -8,28 +8,24 @@ pub struct TautoSolver {
     pub assigns: Vec<BoolValue>,
 }
 
-impl TautoSolver {
-    pub fn new(cnf: Cnf) -> TautoSolver {
+impl Solver for TautoSolver {
+    fn new(cnf: &mut Cnf) -> TautoSolver {
         TautoSolver {
             n: cnf.var_num,
             clauses: cnf.clauses,
             assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
-
-    #[allow(dead_code)]
-    pub fn assigns(&self) -> Vec<BoolValue> {
-        self.assigns.clone()
+    fn assigns(&self) -> &Vec<all_types::BoolValue> {
+        &self.assigns
     }
-
-    pub fn solve(
-        &mut self,
-        max_time: Option<std::time::Duration>,
-    ) -> (Option<bool>, std::time::Duration) {
+    fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
         let start = std::time::Instant::now();
-        println!("Solving...");
         (self.ssolve(0, start, max_time), start.elapsed())
     }
+}
+
+impl TautoSolver {
 
     fn eval(&self) -> bool {
         for clause in self.clauses.iter() {

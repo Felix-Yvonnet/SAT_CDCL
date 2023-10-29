@@ -1,10 +1,10 @@
-use crate::*;
+use crate::{*, solver::Solver};
 use std::time::{Duration, Instant};
 /// A CDCL solver.
 /// Clause Driven Conflict Learning is an algorithm that solves SAT in an amortized exponential time.
 /// The amortized part allows us to be "efficient" on real input, that is to say that we postpone the exponential growth enough to make it usable.
 #[derive(Debug, Default)]
-pub struct Solver {
+pub struct CdclSolver {
     // The clauses (initial and added ones)
     clauses: AllClauses,
     // Assignments of vars and decision levels of the assignments
@@ -15,10 +15,10 @@ pub struct Solver {
     level: usize,
 }
 
-impl Solver {
-    pub fn new(clauses: &mut Cnf) -> Self {
+impl Solver for CdclSolver {
+    fn new(clauses : &mut Cnf) -> Self {
         let n = clauses.var_num;
-        let mut solver = Solver {
+        let mut solver = CdclSolver {
             clauses: AllClauses { clauses: vec![] },
             working_model: WorkingModel::new(n),
             status: None,
@@ -33,6 +33,54 @@ impl Solver {
         });
         solver
     }
+
+    fn assigns(&self) -> &Vec<BoolValue> {
+        self.working_model.get_assigned()
+    }
+
+    /// Implement the CDCL algorithm
+    fn specific_solve(&mut self, max_time : Option<Duration>) -> (Option<bool>, Duration) {
+        if self.status.is_some() {
+            return (self.status, Duration::from_secs(0));
+        }
+        let start = Instant::now();
+
+        self.propagate();
+
+        loop {
+            if let Some(time) = max_time {
+                if start.elapsed() > time {
+                    self.status = None;
+                    return (None, start.elapsed());
+                }
+            }
+            while self.working_model.state_formula(&self.clauses) == BoolValue::False {
+                if self.level == 0 {
+                    self.status = Some(false);
+                    return (self.status, start.elapsed());
+                }
+                let (lvl, learnt) = self.analyze_conflict();
+                self.backtrack(lvl as usize);
+                if !self.add_clause(learnt) {
+                    return (self.status, start.elapsed());
+                }
+                self.propagate();
+            }
+            if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
+                self.level += 1;
+                self.decide();
+                self.propagate();
+            }
+            if self.working_model.state_formula(&self.clauses) == BoolValue::True {
+                break;
+            }
+        }
+        self.status = Some(true);
+        (Some(true), start.elapsed())
+    }
+}
+
+impl CdclSolver {
 
     pub fn add_clause(&mut self, clause: Clause) -> bool {
         if clause.len() == 1 {
@@ -51,52 +99,6 @@ impl Solver {
         }
         true
     }
-
-    /// Implement the CDCL algorithm
-    fn cdcl(&mut self, maxtime: Option<Duration>) -> Duration {
-        let start = Instant::now();
-        self.propagate();
-
-        loop {
-            if let Some(time) = maxtime {
-                if start.elapsed() > time {
-                    self.status = None;
-                    return start.elapsed();
-                }
-            }
-            while self.working_model.state_formula(&self.clauses) == BoolValue::False {
-                if self.level == 0 {
-                    self.status = Some(false);
-                    return start.elapsed();
-                }
-                let (lvl, learnt) = self.analyze_conflict();
-                self.backtrack(lvl as usize);
-                if !self.add_clause(learnt) {
-                    return start.elapsed();
-                }
-                self.propagate();
-            }
-            if self.working_model.state_formula(&self.clauses) == BoolValue::Undefined {
-                self.level += 1;
-                self.decide();
-                self.propagate();
-            }
-            if self.working_model.state_formula(&self.clauses) == BoolValue::True {
-                break;
-            }
-        }
-        self.status = Some(true);
-        start.elapsed()
-    }
-
-    pub fn solve(&mut self, maxtime: Option<Duration>) -> Duration {
-        if self.status.is_some() {
-            return Duration::from_secs(0);
-        }
-        println!("Solving...");
-        self.cdcl(maxtime)
-    }
-
     /// Implement the decision phase of CDCL
     fn decide(&mut self) {
         // TODO
@@ -156,7 +158,4 @@ impl Solver {
         self.working_model.backtracking(level);
     }
 
-    pub fn assigns(&self) -> &Vec<BoolValue> {
-        self.working_model.get_assigned()
-    }
 }
