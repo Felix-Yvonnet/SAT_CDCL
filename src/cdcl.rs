@@ -72,8 +72,8 @@ impl CdclSolver {
                         if seen_one {
                             pos2 = *lit;
                         } else if self.working_model.eval(pos1) != BoolValue::True {
-                                pos1 = *lit;
-                                seen_one = true
+                            pos1 = *lit;
+                            seen_one = true
                         }
                     }
                     BoolValue::True => {
@@ -81,7 +81,7 @@ impl CdclSolver {
                     }
                     _ => {}
                 }
-            };
+            }
             self.watchers.add(pos1, self.clauses.len());
             self.watchers.add(pos2, self.clauses.len());
             self.clauses.push(clause);
@@ -139,9 +139,7 @@ impl CdclSolver {
             something_was_done = false;
 
             for clause in self.clauses.clauses.iter() {
-                for (lit, clauses) in self.watchers.iter().enumerate() {
-
-                }
+                for (lit, clauses) in self.watchers.iter().enumerate() {}
                 if let Some(to_be_set_true) = self.working_model.is_unit_clause(clause) {
                     something_was_done = true;
                     self.working_model.assign(
