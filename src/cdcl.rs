@@ -13,6 +13,8 @@ pub struct CdclSolver {
     // Wether it is sat or not
     pub status: Option<bool>,
     level: usize,
+    // implements 2 watch literals
+    watchers: Watcher,
 }
 
 impl<'a> solver::Solver<'a> for CdclSolver {
@@ -23,6 +25,7 @@ impl<'a> solver::Solver<'a> for CdclSolver {
             working_model: WorkingModel::new(n),
             status: None,
             level: 0,
+            watchers: Watcher::new(n),
         };
         clauses.clauses.iter().for_each(|clause| {
             if clause.is_empty() {
@@ -60,6 +63,27 @@ impl CdclSolver {
                 self.level,
             )
         } else {
+            let mut pos1 = clause[0];
+            let mut pos2 = clause[1];
+            let mut seen_one = false;
+            for lit in clause.iter() {
+                match self.working_model.eval(*lit) {
+                    BoolValue::Undefined => {
+                        if seen_one {
+                            pos2 = *lit;
+                        } else if self.working_model.eval(pos1) != BoolValue::True {
+                                pos1 = *lit;
+                                seen_one = true
+                        }
+                    }
+                    BoolValue::True => {
+                        pos1 = *lit;
+                    }
+                    _ => {}
+                }
+            };
+            self.watchers.add(pos1, self.clauses.len());
+            self.watchers.add(pos2, self.clauses.len());
             self.clauses.push(clause);
         }
         true
@@ -105,6 +129,32 @@ impl CdclSolver {
             BoolValue::True,
             self.level,
         )
+    }
+
+    // Implement clause propagation
+    fn propagate2wl(&mut self) {
+        let mut something_was_done: bool = true;
+
+        while something_was_done {
+            something_was_done = false;
+
+            for clause in self.clauses.clauses.iter() {
+                for (lit, clauses) in self.watchers.iter().enumerate() {
+
+                }
+                if let Some(to_be_set_true) = self.working_model.is_unit_clause(clause) {
+                    something_was_done = true;
+                    self.working_model.assign(
+                        to_be_set_true.get_var(),
+                        BoolValue::from(to_be_set_true.is_neg() as i8),
+                        self.level,
+                    );
+
+                    self.working_model
+                        .add_implications(to_be_set_true.get_var(), clause)
+                }
+            }
+        }
     }
 
     // Implement clause propagation

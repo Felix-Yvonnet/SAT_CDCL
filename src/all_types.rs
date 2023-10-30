@@ -110,6 +110,9 @@ impl AllClauses {
     pub fn push(&mut self, clause: Clause) {
         self.clauses.push(clause);
     }
+    pub fn len(&self) -> usize {
+        self.clauses.len()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -310,3 +313,27 @@ impl WorkingModel {
     }
 }
 
+
+#[derive(Debug)]
+/// Implements 2 watched literals.
+/// Try to keep as invariant the fact that if a literal is false among them then we should unit propagate the other.
+/// We also want to have a literal if it is true so that we can tell the evaluation of the clause just by looking at its literals.
+pub struct Watcher {
+    // watcher[lit] = list of clauses where "lit" is watched
+    // usize such that solver.clauses[usize] is the clauses we are interested in
+    lit_to_clauses: Vec<Vec<usize>>,
+}
+
+impl Watcher {
+    pub fn new(var_num: usize) -> Self {
+        Watcher {
+            lit_to_clauses: vec![vec![]; var_num * 2],
+        }
+    }
+    pub fn add(&mut self, lit: Lit, clause: usize) {
+        self.lit_to_clauses[lit].push(clause);
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Vec<usize>> {
+        self.lit_to_clauses.iter()
+    }
+}
