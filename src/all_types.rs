@@ -313,6 +313,7 @@ impl WorkingModel {
     }
 }
 
+
 #[derive(Debug)]
 /// Implements 2 watched literals.
 /// Try to keep as invariant the fact that if a literal is false among them then we should unit propagate the other.

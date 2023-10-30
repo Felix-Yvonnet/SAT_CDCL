@@ -79,6 +79,7 @@ impl<'a> crate::solver::Solver<'a> for SAT2 {
     }
 
     fn assigns(&mut self) -> &Vec<BoolValue> {
+        debug_assert!(self.status == Some(true));
         for eval in self.assigns.iter_mut() {
             if *eval == BoolValue::Undefined {
                 *eval = BoolValue::False
