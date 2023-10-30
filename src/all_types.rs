@@ -74,14 +74,14 @@ impl<T> IndexMut<Var> for Vec<T> {
 
 pub type Clause = Vec<Lit>;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct CClause {
-    clause: Vec<Lit>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CClause<'a> {
+    clause: &'a Vec<Lit>,
     pub pos: Option<Var>,
 }
 
-impl CClause {
-    pub fn new(clause: Vec<Lit>, pos: Option<Var>) -> Self {
+impl<'a> CClause<'a> {
+    pub fn new<'b: 'a>(clause: &'b Vec<Lit>, pos: Option<Var>) -> Self {
         CClause { clause, pos }
     }
     pub fn iter(&self) -> impl Iterator<Item = &Lit> {
@@ -91,11 +91,11 @@ impl CClause {
 
 #[derive(Debug, Default, Clone)]
 
-pub struct CAllClauses {
-    pub clauses: Vec<CClause>,
+pub struct CAllClauses<'a> {
+    pub clauses: Vec<CClause<'a>>,
 }
-impl CAllClauses {
-    pub fn new(clauses: Vec<CClause>) -> Self {
+impl<'a> CAllClauses<'a> {
+    pub fn new(clauses: Vec<CClause<'a>>) -> Self {
         CAllClauses { clauses }
     }
 }
@@ -117,12 +117,6 @@ pub struct Cnf {
     pub var_num: usize,
     pub cl_num: usize,
     pub clauses: Vec<Vec<Lit>>,
-}
-
-impl Cnf {
-    pub fn iter(&mut self) -> impl Iterator<Item = &Vec<Lit>> {
-        self.clauses.iter()
-    }
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -159,7 +153,7 @@ impl std::ops::Not for BoolValue {
 /// If p in impl_graph[q] then p goes to q in the implication graph
 pub struct ImplGraph(Vec<Vec<Lit>>);
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct WorkingModel {
     // The working assignment of the model
     assigns: Vec<BoolValue>,
@@ -203,6 +197,7 @@ impl WorkingModel {
         // backtracking the implication graph to find the sources of the conflict
         // creates the conflict clause
         let mut stack = Vec::new();
+
         let mut conflict_clause = Vec::new();
         for lit in conflict {
             stack.push(!*lit)
@@ -314,3 +309,4 @@ impl WorkingModel {
         }
     }
 }
+

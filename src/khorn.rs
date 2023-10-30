@@ -4,67 +4,61 @@ use std::collections::hash_set::HashSet;
 /// A solver for Horn formulae.
 /// A clause is said to be a Horn clause if it contains at most one positive (non negated) literal. A Horn formulae is a conjunction of Horn clauses.
 /// This solver is linear.
-pub struct KhornSolver {
+pub struct KhornSolver<'a> {
     num_var: usize,
     num_clauses: usize,
-    clauses: CAllClauses,
+    formula: CAllClauses<'a>,
     status: Option<bool>,
     assigned_pos: HashSet<Var>,
+    assigns: Vec<BoolValue>,
 }
-
-impl Solver for KhornSolver {
-    fn new(clauses : &mut Cnf) -> Self {
+impl<'a> crate::solver::Solver<'a> for KhornSolver<'a> {
+    fn new<'b: 'a>(formula: &'b Cnf) -> Self {
         let mut status = None;
         let mut new_clauses = vec![];
-        for clause in clauses.iter() {
+        for clause in formula.clauses.iter() {
             if clause.is_empty() {
                 status = Some(false)
             } else {
-                new_clauses.push(CClause::new(clause.clone(), {
+                new_clauses.push(CClause::new(clause, {
                     let ind = clause.iter().position(|lit| lit.is_pos());
                     ind.map(|i| clause[i].get_var())
                 }));
             }
         }
         KhornSolver {
-            num_var: clauses.var_num,
-            num_clauses: clauses.cl_num,
+            num_var: formula.var_num,
+            num_clauses: formula.cl_num,
             status,
-            clauses: CAllClauses::new(new_clauses),
+            formula: CAllClauses::new(new_clauses),
             assigned_pos: HashSet::new(),
+            assigns: vec![BoolValue::False; formula.var_num],
         }
     }
 
-    fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
-        let start = std::time::Instant::now();
-        if self.status.is_some() {
-            (self.status, start.elapsed())
+    fn solve(&mut self) -> bool {
+        if let Some(status) = self.status {
+            status
         } else {
-            (Some(self.linear_solve()), start.elapsed())
+            self.linear_solve()
         }
     }
-    #[allow(dead_code)]
-    fn assigns(&self) -> &Vec<BoolValue> {
-        let mut assigns = vec![BoolValue::False; self.num_var];
+
+    fn assigns(&mut self) -> &Vec<BoolValue> {
         for var in self.assigned_pos.iter() {
-            assigns[*var] = BoolValue::True;
+            self.assigns[*var] = BoolValue::True;
         }
-        &assigns
+        &self.assigns
     }
 }
-
-impl KhornSolver {
+impl<'a> KhornSolver<'a> {
     fn linear_solve(&mut self) -> bool {
-        // ind(clause) = self.clauses.clauses.position(clause)
+        // ind(clause) = self.formula.clauses.position(clause)
         let mut score: Vec<u32> = vec![0; self.num_clauses]; // ind(clause) -> score
         let mut clauses_with_negvar: Vec<HashSet<u32>> = vec![HashSet::new(); self.num_var]; // var -> list[ind(clause)]
-        assert!(self.clauses.clauses.len() == self.num_clauses);
-        for (k, scorek) in score
-            .iter_mut()
-            .enumerate()
-            .take(self.clauses.clauses.len())
-        {
-            for lit in self.clauses.clauses[k].iter() {
+        assert!(self.formula.clauses.len() == self.num_clauses);
+        for (k, scorek) in score.iter_mut().enumerate() {
+            for lit in self.formula.clauses[k].iter() {
                 *scorek += lit.is_neg() as u32;
                 if lit.is_neg() {
                     clauses_with_negvar[lit.get_var()].insert(k as u32);
@@ -77,10 +71,9 @@ impl KhornSolver {
             pool[score[k] as usize].insert(k as u32);
         }
 
-        while !pool[0].is_empty() {
-            let curr = *pool[0].iter().next().unwrap();
+        while let Some(&curr) = pool[0].iter().next() {
             pool[0].remove(&curr);
-            let curr_clause = &self.clauses.clauses[curr as usize];
+            let curr_clause = &self.formula.clauses[curr as usize];
             let opt_v = curr_clause.pos;
             if opt_v.is_none() {
                 return false;

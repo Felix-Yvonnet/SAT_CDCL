@@ -2,31 +2,34 @@ use crate::*;
 
 /// The simpliest solver one can think of.
 /// It is exponential and not very efficient but useful for controlling the performance and predictions.
-pub struct TautoSolver {
+pub struct TautoSolver<'a> {
     n: usize,
-    clauses: Vec<Clause>,
+    clauses: &'a Vec<Clause>,
     pub assigns: Vec<BoolValue>,
 }
 
-impl Solver for TautoSolver {
-    fn new(cnf: &mut Cnf) -> TautoSolver {
+impl<'a> solver::Solver<'a> for TautoSolver<'a> {
+    fn new<'b>(cnf: &'b Cnf) -> TautoSolver<'a>
+    where
+        'b: 'a,
+    {
         TautoSolver {
             n: cnf.var_num,
-            clauses: cnf.clauses,
+            clauses: &cnf.clauses,
             assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
-    fn assigns(&self) -> &Vec<all_types::BoolValue> {
+
+    fn assigns(&mut self) -> &Vec<BoolValue> {
         &self.assigns
     }
-    fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
-        let start = std::time::Instant::now();
-        (self.ssolve(0, start, max_time), start.elapsed())
+
+    fn solve(&mut self) -> bool {
+        self.ssolve(0)
     }
 }
 
-impl TautoSolver {
-
+impl<'a> TautoSolver<'a> {
     fn eval(&self) -> bool {
         for clause in self.clauses.iter() {
             let mut satisfied = false;
@@ -54,29 +57,17 @@ impl TautoSolver {
         true
     }
 
-    fn ssolve(
-        &mut self,
-        i: usize,
-        start: std::time::Instant,
-        max_time: Option<std::time::Duration>,
-    ) -> Option<bool> {
+    fn ssolve(&mut self, i: usize) -> bool {
         if i == self.n {
-            return Some(self.eval());
+            return self.eval();
         }
         self.assigns[i] = BoolValue::True;
-        let result = self.ssolve(i + 1, start, max_time);
+        let result = self.ssolve(i + 1);
 
-        result?;
-
-        if let Some(time) = max_time {
-            if start.elapsed() > time {
-                return None;
-            }
-        }
-        if !result.unwrap() {
+        if !result {
             self.assigns[i] = BoolValue::False;
-            return self.ssolve(i + 1, start, max_time);
+            return self.ssolve(i + 1);
         }
-        Some(true)
+        true
     }
 }

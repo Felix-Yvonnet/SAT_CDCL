@@ -1,2 +1,16 @@
-cargo fmt
+#!/usr/bin/env bash
+echo "Testing..."
+
+cargo fmt --all
+
+errormsg=$(cargo clippy --all --all-targets -- -D warnings 2>&1)
+
+if [[ -z $(cargo clippy --all --all-targets -- -D warnings 2>&1 | grep "Finished") ]];
+then
+    echo $errormsg
+    exit 1
+else
+    tput setaf 2; echo "Small mistakes check"; tput setaf 7
+fi
+
 cargo test

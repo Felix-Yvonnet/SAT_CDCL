@@ -11,15 +11,19 @@ use std::io::BufRead;
 /// -1 -2 0
 /// 1 0
 /// ```
-pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::Cnf> {
+pub fn parse_cnf(path: &str, verbose: bool) -> std::io::Result<crate::all_types::Cnf> {
     let input = match std::fs::File::open(path) {
         Err(e) => panic!("Impossible to open file: {e}"),
         Ok(f) => f,
     };
-    println!("Reading file: {path}");
+    if verbose {
+        println!("Reading file: {path}")
+    }
     let reader = std::io::BufReader::new(input);
     let mut var_num = 0;
     let mut cl_num = 0;
+    let mut var_count = 0;
+    let mut clause_count = 0;
     let mut clauses = vec![];
     let mut seen_p = false;
     for line in reader.lines() {
@@ -58,18 +62,28 @@ pub fn parse_cnf(path: &str) -> std::io::Result<crate::all_types::Cnf> {
             .take_while(|x| *x != 0)
             .collect();
 
+        clause_count += 1;
         if values.is_empty() {
             // empty clause
             continue;
         }
         let clause: Vec<crate::all_types::Lit> = values
             .iter()
-            .map(|&x| crate::all_types::Lit::from(x))
+            .map(|&x| {
+                var_count = var_count.max(x.unsigned_abs() as usize);
+                crate::all_types::Lit::from(x)
+            })
             .collect();
         clauses.push(clause);
     }
     if !seen_p {
         panic!("A line containing \"p cnf <var number> <clause number>\" is expected.")
+    }
+    if var_count > var_num {
+        panic!("Too much variables, expected {var_num} but found up to {var_count}")
+    }
+    if clause_count > cl_num {
+        panic!("Too much clauses, expected {cl_num} but found up to {clause_count}")
     }
     if cl_num != clauses.len() {
         // We found an empty clause, ie the formula is false.

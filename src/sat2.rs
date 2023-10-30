@@ -10,8 +10,8 @@ pub struct SAT2Solver {
     pub assigns: Vec<BoolValue>,
 }
 
-impl Solver for SAT2Solver {
-    fn new(cnf: &mut Cnf) -> SAT2Solver {
+impl<'a> crate::solver::Solver<'a> for SAT2 {
+    fn new<'b: 'a>(cnf: &Cnf) -> SAT2 {
         if cnf.clauses.is_empty() {
             return SAT2Solver {
                 impl_graph: DiGraph::new(),
@@ -28,7 +28,7 @@ impl Solver for SAT2Solver {
         let mut impl_graph = DiGraph::new();
         let mut all_lits: Vec<Option<petgraph::stable_graph::NodeIndex>> =
             vec![None; 2 * cnf.var_num];
-        for clause in cnf.clauses {
+        for clause in cnf.clauses.iter() {
             let lit1 = clause[0];
             let lit2 = clause[1];
             if all_lits[lit1].is_none() {
@@ -60,6 +60,9 @@ impl Solver for SAT2Solver {
     fn specific_solve(&mut self, max_time : Option<std::time::Duration>) -> (Option<bool>, std::time::Duration) {
         let start = std::time::Instant::now();
 
+    fn solve(&mut self) -> bool {
+        if let Some(status) = self.status {
+            return status;
         if self.status.is_some() {
             return (self.status, start.elapsed());
         };
@@ -69,6 +72,7 @@ impl Solver for SAT2Solver {
             for node_lit in scc {
                 let lit = self.impl_graph[node_lit];
                 if all_literals.contains(&!lit) {
+                    self.status = Some(false);
                     return (Some(false), start.elapsed());
                 }
                 all_literals.insert(lit);
@@ -77,10 +81,10 @@ impl Solver for SAT2Solver {
                 }
             }
         }
+        self.status = Some(true);
         (Some(true), start.elapsed())
     }
 }
-
 
 pub fn is_2sat(cnf: &Cnf) -> bool {
     for clause in cnf.clauses.iter() {
