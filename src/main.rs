@@ -1,9 +1,10 @@
 mod all_types;
+mod cdcl;
+mod dpll;
 mod khorn;
 mod parser;
 mod sat2;
 mod solver;
-mod cdcl;
 mod tautosolver;
 use core::panic;
 
@@ -59,6 +60,7 @@ fn help() {
     println!("--cdcl        Using the CDCL solver");
     println!("--khorn       Using the Khorn solver");
     println!("--dummy       Using the dummy solver");
+    println!("--dpll        Using the dpll solver");
     println!("--2sat        Using the 2sat solver");
     println!("--proof       Test whether the returned assigments are correct (the ouput model indeed satisfies the problem)");
     println!("-v --verbose  Print the model and different informations");
@@ -126,7 +128,9 @@ fn apply_solver<'a>(solver: &mut impl Solver<'a>, cnf: &Cnf, verbose: bool, proo
     let start = std::time::Instant::now();
     let is_sat = solver.solve();
     print_status(is_sat);
-    print_proof(proof, solver.assigns(), &cnf.clauses, verbose);
+    if is_sat {
+        print_proof(proof, solver.assigns(), &cnf.clauses, verbose)
+    }
     if verbose {
         println!("Solved in {} seconds", start.elapsed().as_secs_f64())
     }
@@ -158,17 +162,18 @@ fn main() {
     let mut cnfs = get_cnfs(files, verbose);
     let mut solver_type = vec![];
     for flag in flags {
-        if flag == "--cdcl" {
-            solver_type.push("cdcl");
-        } else if flag == "--khorn" {
-            if verbose && !khorn::is_khorn(&cnfs[0]) {
-                println!("\x1b[31mNot a Horn\x1b[0m configuration but go on")
+        match flag.as_str() {
+            "--cdcl" => solver_type.push("cdcl"),
+            "--khorn" => {
+                if verbose && !khorn::is_khorn(&cnfs[0]) {
+                    println!("\x1b[31mNot a Horn configuration\x1b[0m but go on")
+                }
+                solver_type.push("khorn");
             }
-            solver_type.push("khorn");
-        } else if flag == "--dummy" {
-            solver_type.push("dummy");
-        } else if flag == "--2sat" {
-            solver_type.push("2sat");
+            "--dummy" => solver_type.push("dummy"),
+            "--2sat" => solver_type.push("2sat"),
+            "--dpll" => solver_type.push("dpll"),
+            _ => {}
         }
     }
 
@@ -201,6 +206,10 @@ fn main() {
                     }
                     "dummy" => {
                         let mut solver = tautosolver::TautoSolver::new(cnf);
+                        apply_solver(&mut solver, cnf, verbose, proof)
+                    }
+                    "dpll" => {
+                        let mut solver = dpll::Dpll::new(cnf);
                         apply_solver(&mut solver, cnf, verbose, proof)
                     }
                     _ => panic!("Weird name"),
