@@ -60,7 +60,7 @@ if the assignments: $x_1:=false, x_2:=true, x_3:=false, x_4:=true, x_5:=false, x
 In addition to the basic CDCL algorithm, we implemented different other solvers to compare and optimize the results. 
 
 ## testing
-
+Before running anything, make sure to have your binary available on the root of the project by calling `cp target/release/sat_solver` . I recommand using `cargo build --release` before that as explained in section [Use](#Use) 
 To test the program, run the following line:
 ```bash
 ./tests/run.sh <timeout> <jobs>
