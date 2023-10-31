@@ -113,6 +113,10 @@ impl AllClauses {
     pub fn len(&self) -> usize {
         self.clauses.len()
     }
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
+        self.clauses.is_empty()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -164,6 +168,8 @@ pub struct WorkingModel {
     decision_level: Vec<usize>,
     // The implication graph
     impl_graph: ImplGraph,
+    // VSIDS
+    pub heap: Heap,
 }
 
 impl WorkingModel {
@@ -172,6 +178,7 @@ impl WorkingModel {
             assigns: vec![BoolValue::Undefined; n],
             decision_level: vec![0; n],
             impl_graph: ImplGraph(vec![Vec::new(); n]),
+            heap: Heap::new(n, 1.0),
         }
     }
     pub fn assign(&mut self, var: Var, value: BoolValue, level: usize) {
@@ -185,6 +192,10 @@ impl WorkingModel {
     #[inline]
     pub fn eval(&self, lit: Lit) -> BoolValue {
         BoolValue::from(self.assigns[lit.get_var()] as i8 ^ lit.is_neg() as i8)
+    }
+    #[inline]
+    pub fn state_var(&self, var: Var) -> BoolValue {
+        self.assigns[var]
     }
 
     /// adds implication in implication graph
@@ -281,13 +292,14 @@ impl WorkingModel {
         undefined_lit
     }
 
-    pub fn next_unassigned(&self) -> Var {
+    #[allow(dead_code)]
+    pub fn next_unassigned(&self) -> Option<Var> {
         for i in 0..self.assigns.len() {
             if self.assigns[i] == BoolValue::Undefined {
-                return Var::from_id(i);
+                return Some(Var::from_id(i));
             }
         }
-        panic!("no variable ?")
+        None
     }
     #[allow(dead_code)]
     pub fn random_unassigned(&self) -> Var {
@@ -305,6 +317,9 @@ impl WorkingModel {
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind] > level {
+                if !self.heap.in_heap(Var::from_id(ind)) {
+                    self.heap.push(Var::from_id(ind));
+                }
                 self.decision_level[ind] = 0;
                 self.assigns[ind] = BoolValue::Undefined;
                 self.impl_graph.0[ind] = Vec::new();
@@ -332,7 +347,135 @@ impl Watcher {
     pub fn add(&mut self, lit: Lit, clause: usize) {
         self.lit_to_clauses[lit].push(clause);
     }
-    pub fn iter(&self) -> impl Iterator<Item = &Vec<usize>> {
-        self.lit_to_clauses.iter()
+}
+
+
+
+#[derive(Debug, Clone)]
+pub struct Heap {
+    heap: Vec<Var>,
+    indices: Vec<Option<usize>>,
+    activity: Vec<f64>,
+    bump_inc: f64,
+}
+impl Default for Heap {
+    fn default() -> Self {
+        Heap {
+            heap: Vec::default(),
+            indices: Vec::default(),
+            activity: Vec::default(),
+            bump_inc: 1.0,
+        }
+    }
+}
+impl Heap {
+    pub fn new(n: usize, bump_inc: f64) -> Heap {
+        Heap {
+            heap: (0..n).map(|x| Var(x as u32)).collect(),
+            indices: (0..n).map(Some).collect(),
+            activity: vec![0.0; n],
+            bump_inc,
+        }
+    }
+
+    fn gt(&self, left: Var, right: Var) -> bool {
+        self.activity[left] > self.activity[right]
+    }
+    pub fn decay_inc(&mut self) {
+        self.bump_inc /= 0.95;
+    }
+    pub fn bump_activity(&mut self, v: Var) {
+        self.activity[v] += self.bump_inc;
+
+        if self.activity[v] >= 1e100 {
+            for i in 0..self.activity.len() {
+                self.activity[i] *= 1e-100;
+            }
+            self.bump_inc *= 1e-100;
+        }
+        if self.in_heap(v) {
+            let idx = self.indices[v].expect("No index");
+            self.up(idx);
+        }
+    }
+    fn up(&mut self, i: usize) {
+        if i == 0 {
+            return;
+        }
+        let mut idx = i;
+        let x = self.heap[idx];
+        let mut par = (idx - 1) >> 1;
+        loop {
+            if !self.gt(x, self.heap[par]) {
+                break;
+            }
+            self.heap[idx] = self.heap[par];
+            self.indices[self.heap[par]] = Some(idx);
+            idx = par;
+            if idx == 0 {
+                break;
+            }
+            par = (par - 1) >> 1;
+        }
+        self.heap[idx] = x;
+        self.indices[x] = Some(idx);
+    }
+
+    pub fn pop(&mut self) -> Option<Var> {
+        if self.heap.is_empty() {
+            return None;
+        }
+        let x = self.heap[0];
+        self.indices[x] = None;
+        if self.heap.len() > 1 {
+            self.heap[0] = *self.heap.last().unwrap();
+            self.indices[self.heap[0]] = Some(0);
+        }
+        self.heap.pop();
+        if self.heap.len() > 1 {
+            self.down(0);
+        }
+        Some(x)
+    }
+
+    fn down(&mut self, i: usize) {
+        let x = self.heap[i];
+        let mut idx = i;
+        while 2 * idx + 1 < self.heap.len() {
+            let left = 2 * idx + 1;
+            let right = left + 1;
+            let child = if right < self.heap.len() && self.gt(self.heap[right], self.heap[left])
+            {
+                right
+            } else {
+                left
+            };
+            if self.gt(self.heap[child], x) {
+                self.heap[idx] = self.heap[child];
+                self.indices[self.heap[idx]] = Some(idx);
+                idx = child;
+            } else {
+                break;
+            }
+        }
+        self.heap[idx] = x;
+        self.indices[x] = Some(idx);
+    }
+
+    fn push(&mut self, v: Var) {
+        if self.in_heap(v) {
+            return;
+        }
+        while (v.0 as usize) >= self.indices.len() {
+            self.indices.push(None);
+            self.activity.push(0.0);
+        }
+        self.indices[v] = Some(self.heap.len());
+        self.heap.push(v);
+        self.up(self.indices[v].expect("No index"));
+    }
+
+    fn in_heap(&mut self, v: Var) -> bool {
+        (v.0 as usize) < self.indices.len() && self.indices[v].is_some()
     }
 }

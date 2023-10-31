@@ -34,6 +34,9 @@ Next, run `sat_solver [args] file(s)` to execute the program on your file(s). It
 
 If no solver is specified in the arguments, the program will determine which solver would optimize the run and execute it on your file(s).
 
+The program will tests wether the input file is Horn (or 2SAR) when the specific solver is asked (with `--khorn` or `--2sat`) if and only if the flag `--verbose` is present.</br>
+If both flags `--proof` and `--verbose` are present, the program will test that the ouputed model indeed satisfies the problem.
+
 ### Example
 To solve the files `tests/sat/horn1.cnf` and `tests/unsat/tseitin5.cnf` using the cdcl solver, run the following command
 ```bash
@@ -55,3 +58,13 @@ if the assignments: $x_1:=false, x_2:=true, x_3:=false, x_4:=true, x_5:=false, x
 ## Improvments
 
 In addition to the basic CDCL algorithm, we implemented different other solvers to compare and optimize the results. 
+
+## testing
+
+To test the program, run the following line:
+```bash
+./tests/run.sh <timeout> <jobs>
+```
+replacing <timeout> by the maximum time spent searching (default 30) and jobs by the number of parallel research done (default 4, requires <timeout> to be changed).
+
+For example, calling `./tests/run.sh 10 8` will run each test in `tests/sat` and `tests/unsat` for at most 10 seconds on 8 differernt jobs.

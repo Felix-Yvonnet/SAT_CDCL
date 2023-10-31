@@ -128,6 +128,8 @@ echo "------------------------"
 #done < <(find "${CALL_PATH}/KO" -name "*.cnf" -print0)
 env_parallel --use-cpus-instead-of-cores -j $JOBS launchUnsatisfiableTest < <(find "${CALL_PATH}/unsat" -name "*.cnf" -print)
 
+echo "Task completed"
+
 RESULT_WRONG=$(wc -l < $FILE_WRONG)
 RESULT_PASS=$(wc -l < $FILE_PASS)
 RESULT_TIMEOUT=$(wc -l < $FILE_TIMEOUT)
