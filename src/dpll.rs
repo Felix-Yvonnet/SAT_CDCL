@@ -16,7 +16,7 @@ impl<'a> solver::Solver<'a> for Dpll {
         Dpll {
             n: cnf.var_num,
             clauses: cnf.clauses.clone(),
-            assigns: vec![],
+            assigns: vec![BoolValue::Undefined; cnf.var_num],
         }
     }
 
@@ -25,107 +25,88 @@ impl<'a> solver::Solver<'a> for Dpll {
     }
 
     fn solve(&mut self) -> bool {
-        let vars = &mut vec![false; self.n];
-        if Dpll::dpll(&self.clauses, vars) {
-            for val in vars.iter() {
-                self.assigns.push(BoolValue::from(!val as i8));
-            }
-            true
-        } else {
-            false
-        }
-
+        let clauses = self.clauses.clone();
+        self.dpll(&clauses)
     }
 }
 
 impl Dpll {
+    fn dpll(&mut self, formula: &[Clause]) -> bool {
+        let mut formula = formula.to_owned();
 
-    fn dpll(formula: &Vec<Clause>, mut vars: &mut Vec<bool>) -> bool {
-        let mut formula = formula.to_vec();
-    
-        Dpll::unit_propagate(&mut formula, &mut vars);
-    
+        self.unit_propagation(&mut formula);
+
         if formula.is_empty() {
             return true;
         }
-    
+
         if formula.iter().any(|clause| clause.is_empty()) {
             return false;
         }
-    
-        let var = Dpll::find_dominant_variable(&formula, vars.len());
-    
-        formula.push(vec![Lit::from(var as i32)]);
-        if Dpll::dpll(&formula, &mut vars) {
+
+        let var = self.next_unassigned(&formula);
+
+        formula.push(vec![Lit::from(var as i32 + 1)]);
+        if self.dpll(&formula) {
             return true;
         }
 
-    
         formula.pop();
-        formula.push(vec![Lit::from(-(var as i32))]);
-
-        Dpll::dpll(&formula, &mut vars)
+        formula.push(vec![!Lit::from(var as i32 + 1)]);
+        self.dpll(&formula)
     }
-    
-    fn unit_propagate(mut formula: &mut Vec<Clause>, vars: &mut Vec<bool>,) {
+
+    fn unit_propagation(&mut self, formula: &mut Vec<Clause>) {
         while let Some(clause) = formula.iter().find(|clause| clause.len() == 1) {
             let lit = clause[0];
-            let var = lit.get_var();
-            let truth = lit.is_pos();
-            vars[var] = truth;
-            Dpll::ramove_all_useless(&mut formula, lit);
+            self.assigns[lit.get_var()] = BoolValue::from(lit.is_neg() as i8);
+            self.remove_useless(formula, lit);
         }
     }
 
-    fn ramove_all_useless(formula: &mut Vec<Clause>, lit: Lit) {
-    
-        let mut index: usize = 0;
+    fn remove_useless(&self, formula: &mut Vec<Clause>, lit: Lit) {
+        let mut index = 0;
         while index < formula.len() {
             let clause = &mut formula[index];
-    
             if clause.contains(&lit) {
-                let n = formula.len();
-                formula.swap(index, n - 1);
+                let len = formula.len();
+                formula.swap(index, len - 1);
                 formula.pop();
                 continue;
             }
-    
-            let mut lit_num = 0;
-            while lit_num < clause.len() {
-                if clause[lit_num] == !lit {
-                    let n = clause.len();
-                    clause.swap(lit_num, n - 1);
+
+            let mut neg_index = 0;
+            while neg_index < clause.len() {
+                if clause[neg_index] == !lit {
+                    let len = clause.len();
+                    clause.swap(neg_index, len - 1);
                     clause.pop();
                     continue;
                 }
-                lit_num += 1;
+                neg_index += 1;
             }
-    
+
             index += 1;
         }
     }
-    
-    fn find_dominant_variable(formula: &Vec<Clause>, n_vars: usize) -> usize {
-        let mut freqs = vec![0; n_vars];
-    
+
+    fn next_unassigned(&self, formula: &Vec<Clause>) -> usize {
+        let mut frequences = vec![0; self.n];
         for clause in formula {
             for lit in clause {
-                let i = lit.get_var();
-                freqs[i] += 1;
+                frequences[lit.get_var()] += 1;
             }
         }
-    
-        let mut max: i32 = 0;
-        let mut argmax: usize = 0;
-    
-        for (i, &freq) in freqs.iter().enumerate() {
+
+        let mut max = 0;
+        let mut argmax = 0;
+
+        for (i, &freq) in frequences.iter().enumerate() {
             if freq > max {
                 max = freq;
                 argmax = i;
             }
         }
-    
-        return argmax+1;
+        argmax
     }
-
 }

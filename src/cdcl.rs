@@ -139,7 +139,7 @@ impl CdclSolver {
             something_was_done = false;
 
             for clause in self.clauses.clauses.iter() {
-                for (lit, clauses) in self.watchers.iter().enumerate() {}
+                for (_lit, _clauses) in self.watchers.iter().enumerate() {}
                 if let Some(to_be_set_true) = self.working_model.is_unit_clause(clause) {
                     something_was_done = true;
                     self.working_model.assign(
