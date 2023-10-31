@@ -18,7 +18,6 @@ pub struct CdclSolver {
     watchers: Watcher,
     // random generator
     rand: rand::rngs::ThreadRng,
-
 }
 
 impl<'a> solver::Solver<'a> for CdclSolver {
@@ -40,9 +39,10 @@ impl<'a> solver::Solver<'a> for CdclSolver {
             }
         });
         let mut frequences = vec![0; n];
-        clauses.clauses.iter().for_each(|clause| {
-            clause.iter().for_each(|lit| frequences[lit.get_var()]+=1)
-        });
+        clauses
+            .clauses
+            .iter()
+            .for_each(|clause| clause.iter().for_each(|lit| frequences[lit.get_var()] += 1));
         solver
     }
 
@@ -113,17 +113,17 @@ impl CdclSolver {
                 if !self.add_clause(learnt) {
                     return false;
                 }
-                
+
                 self.working_model.heap.decay_inc();
 
                 self.propagate();
             }
             self.level += 1;
             if self.decide() {
-                return true
+                return true;
             }
             self.propagate();
-            
+
             if self.working_model.state_formula(&self.clauses) == BoolValue::True {
                 break;
             }
@@ -134,21 +134,20 @@ impl CdclSolver {
 
     /// Implement the decision phase of CDCL
     fn decide(&mut self) -> bool {
-
         loop {
             if let Some(var) = self.working_model.heap.pop() {
                 if self.working_model.state_var(var) != BoolValue::Undefined {
-                    continue
+                    continue;
                 }
                 self.working_model.assign(
                     var,
                     BoolValue::from(self.rand.gen_range(0..2)),
                     self.level,
                 );
-                return false
+                return false;
             } else {
                 self.status = Some(true);
-                return true
+                return true;
             }
         }
     }
@@ -189,7 +188,9 @@ impl CdclSolver {
                     max = current
                 }
             }
-            conflict_clause.iter().for_each(|lit| self.working_model.heap.bump_activity(lit.get_var()));
+            conflict_clause
+                .iter()
+                .for_each(|lit| self.working_model.heap.bump_activity(lit.get_var()));
 
             (max as i32 - 1, conflict_clause)
         } else {

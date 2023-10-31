@@ -349,8 +349,6 @@ impl Watcher {
     }
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct Heap {
     heap: Vec<Var>,
@@ -444,8 +442,7 @@ impl Heap {
         while 2 * idx + 1 < self.heap.len() {
             let left = 2 * idx + 1;
             let right = left + 1;
-            let child = if right < self.heap.len() && self.gt(self.heap[right], self.heap[left])
-            {
+            let child = if right < self.heap.len() && self.gt(self.heap[right], self.heap[left]) {
                 right
             } else {
                 left
