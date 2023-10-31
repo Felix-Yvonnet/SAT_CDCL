@@ -182,7 +182,7 @@ impl CdclSolver {
             // find decision level to backtrack to
             // it is the maximum of all the decision levels in conflict clause - 1
             let mut max = self.working_model.level(conflict_clause[0].get_var());
-            for lit in &conflict_clause {
+            for lit in conflict_clause.iter() {
                 let current = self.working_model.level(lit.get_var());
                 if current > max {
                     max = current
@@ -190,7 +190,7 @@ impl CdclSolver {
             }
             conflict_clause
                 .iter()
-                .for_each(|lit| self.working_model.heap.bump_activity(lit.get_var()));
+                .for_each(|lit| self.working_model.heap.incr_activity(lit.get_var()));
 
             (max as i32 - 1, conflict_clause)
         } else {

@@ -317,7 +317,7 @@ impl WorkingModel {
     pub fn backtracking(&mut self, level: usize) {
         for ind in 0..self.assigns.len() {
             if self.decision_level[ind] > level {
-                if !self.heap.in_heap(Var::from_id(ind)) {
+                if !self.heap.contains(Var::from_id(ind)) {
                     self.heap.push(Var::from_id(ind));
                 }
                 self.decision_level[ind] = 0;
@@ -356,16 +356,6 @@ pub struct Heap {
     activity: Vec<f64>,
     bump_inc: f64,
 }
-impl Default for Heap {
-    fn default() -> Self {
-        Heap {
-            heap: Vec::default(),
-            indices: Vec::default(),
-            activity: Vec::default(),
-            bump_inc: 1.0,
-        }
-    }
-}
 impl Heap {
     pub fn new(n: usize, bump_inc: f64) -> Heap {
         Heap {
@@ -382,41 +372,17 @@ impl Heap {
     pub fn decay_inc(&mut self) {
         self.bump_inc *= 1.05;
     }
-    pub fn bump_activity(&mut self, v: Var) {
+    pub fn incr_activity(&mut self, v: Var) {
         self.activity[v] += self.bump_inc;
 
         if self.activity[v] >= 1e100 {
-            for i in 0..self.activity.len() {
-                self.activity[i] *= 1e-100;
-            }
+            self.activity.iter_mut().for_each(|x| *x *= 1e-100);
             self.bump_inc *= 1e-100;
         }
-        if self.in_heap(v) {
-            let idx = self.indices[v].expect("No index");
-            self.up(idx);
+        if self.contains(v) {
+            let index = self.indices[v].unwrap();
+            self.increase(index);
         }
-    }
-    fn up(&mut self, i: usize) {
-        if i == 0 {
-            return;
-        }
-        let mut idx = i;
-        let x = self.heap[idx];
-        let mut par = (idx - 1) >> 1;
-        loop {
-            if !self.gt(x, self.heap[par]) {
-                break;
-            }
-            self.heap[idx] = self.heap[par];
-            self.indices[self.heap[par]] = Some(idx);
-            idx = par;
-            if idx == 0 {
-                break;
-            }
-            par = (par - 1) >> 1;
-        }
-        self.heap[idx] = x;
-        self.indices[x] = Some(idx);
     }
 
     pub fn pop(&mut self) -> Option<Var> {
@@ -431,16 +397,39 @@ impl Heap {
         }
         self.heap.pop();
         if self.heap.len() > 1 {
-            self.down(0);
+            self.decrease(0);
         }
         Some(x)
     }
 
-    fn down(&mut self, i: usize) {
+    fn increase(&mut self, i: usize) {
+        if i == 0 {
+            return;
+        }
+        let mut index = i;
+        let x = self.heap[index];
+        let mut par = (index - 1) >> 1;
+        loop {
+            if !self.gt(x, self.heap[par]) {
+                break;
+            }
+            self.heap[index] = self.heap[par];
+            self.indices[self.heap[par]] = Some(index);
+            index = par;
+            if index == 0 {
+                break;
+            }
+            par = (par - 1) >> 1;
+        }
+        self.heap[index] = x;
+        self.indices[x] = Some(index);
+    }
+
+    fn decrease(&mut self, i: usize) {
         let x = self.heap[i];
-        let mut idx = i;
-        while 2 * idx + 1 < self.heap.len() {
-            let left = 2 * idx + 1;
+        let mut index = i;
+        while 2 * index + 1 < self.heap.len() {
+            let left = 2 * index + 1;
             let right = left + 1;
             let child = if right < self.heap.len() && self.gt(self.heap[right], self.heap[left]) {
                 right
@@ -448,19 +437,19 @@ impl Heap {
                 left
             };
             if self.gt(self.heap[child], x) {
-                self.heap[idx] = self.heap[child];
-                self.indices[self.heap[idx]] = Some(idx);
-                idx = child;
+                self.heap[index] = self.heap[child];
+                self.indices[self.heap[index]] = Some(index);
+                index = child;
             } else {
                 break;
             }
         }
-        self.heap[idx] = x;
-        self.indices[x] = Some(idx);
+        self.heap[index] = x;
+        self.indices[x] = Some(index);
     }
 
     fn push(&mut self, v: Var) {
-        if self.in_heap(v) {
+        if self.contains(v) {
             return;
         }
         while (v.0 as usize) >= self.indices.len() {
@@ -469,10 +458,10 @@ impl Heap {
         }
         self.indices[v] = Some(self.heap.len());
         self.heap.push(v);
-        self.up(self.indices[v].expect("No index"));
+        self.increase(self.indices[v].expect("No index"));
     }
 
-    fn in_heap(&mut self, v: Var) -> bool {
+    fn contains(&mut self, v: Var) -> bool {
         (v.0 as usize) < self.indices.len() && self.indices[v].is_some()
     }
 }
